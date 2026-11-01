@@ -47,9 +47,15 @@ Sprechertext gesamt: ca. 190 Wörter → ca. 80–85 s. Die Szenenlängen werden
 
 **Hinweis Abstimmungen:** Webex-Spaces haben laut Webex-Hilfe keine eingebaute Umfragefunktion; Slido ist für Meetings dokumentiert. Das Video zeigt daher Abstimmung per Reaktion im Space und per Slido im Meeting – also nur, was es tatsächlich gibt.
 
-## Noch offen
+## Entscheidungen (geklärt)
 
-1. **Aussprache „Skipi“:** „Skippi“ (kurzes i) oder „Ski-pi“? Ich schreibe es für die Sprecherin dann lautschriftlich.
-2. **Call-to-Action:** Vorschlag „Ab sofort: Kurz & intern → Webex-Space. Beschlüsse & Revisionsrelevantes → Mail.“ Mit Startdatum?
-3. **Musik:** Der hier verbundene ElevenLabs-Connector erzeugt keine Musik (nur Sprache und Soundeffekte).
-4. **Stimme:** Vorschlag Monika (warm, lebendig).
+1. Aussprache „Skipi“: „Skippi“
+2. Abschlusstafel: „Ab sofort: Kurz & intern → Webex-Space. Beschlüsse & Revisionsrelevantes → Mail.“ (ohne Datum)
+3. Musik: gewünscht – folgt, sobald der volle ElevenLabs-Connector verbunden ist; bis dahin nur Soundeffekte
+4. Stimme: Monika (ElevenLabs, `eleven_v4`)
+
+## Produktion
+
+- Video: `webex_erklaervideo.mp4` (1920×1080, 30 fps, 89,6 s, −17 LUFS)
+- Neu bauen: `src/build.sh <arbeitsordner> [musik.mp3]` – Eingaben liegen in `assets/` (Arbeitsordner: `audio/` und `sfx/` daraus befüllen)
+- Pipeline: `prep_audio.py` (Szenenschnitt, Tempo +10 %, Cues) → `render.js` + `stage.html` (Playwright, eine MP4 pro Szene) → concat `-c copy` → `mix.py` (Stimme + Soundeffekte + optional Musik, Ducking, Loudnorm) → Ton mit `-c:v copy` anlegen
