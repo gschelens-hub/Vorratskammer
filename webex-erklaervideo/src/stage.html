@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Webex Erklärvideo – Bühne</title>
+<style>
+:root{
+  --red1:#FF281E; --red2:#D60000; --red:#E3000F;
+  --ink:#15171C; --mut:#6B7280; --mut2:#9AA0A8; --line:#E7E8EB; --bg:#F2F3F5;
+  --soft:#F7F7F8; --hl:#FFF1F0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);
+  font-family:Inter,"Noto Color Emoji",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+#stage{position:absolute;inset:0;overflow:hidden}
+.abs{position:absolute}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.10;background:var(--red1)}
+
+/* Fenster */
+.win{position:absolute;background:#fff;border-radius:22px;overflow:hidden;
+  box-shadow:0 34px 90px rgba(20,22,40,.13),0 4px 16px rgba(20,22,40,.06)}
+.tbar{height:46px;background:var(--soft);border-bottom:1px solid var(--line);display:flex;align-items:center;
+  padding:0 20px;gap:9px;font-size:15px;color:var(--mut);font-weight:600}
+.tdot{width:12px;height:12px;border-radius:50%;background:#DCDEE2}
+.tbar .ttl{margin-left:12px}
+
+/* Outlook */
+.ol-body{position:absolute;top:46px;left:0;right:0;bottom:0;display:flex}
+.ol-folders{width:250px;background:#FAFAFB;border-right:1px solid var(--line);padding:22px 16px}
+.ol-new{background:#1F5FAD;color:#fff;border-radius:10px;padding:12px 16px;font-weight:600;font-size:16px;margin-bottom:22px;text-align:center}
+.ol-f{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-radius:9px;font-size:17px;color:#3A3F47;margin-bottom:4px}
+.ol-f.act{background:#E8EEF7;font-weight:700;color:#173F75}
+.ol-cnt{font-weight:800;color:#1F5FAD;font-variant-numeric:tabular-nums}
+.ol-main{flex:1;position:relative;overflow:hidden}
+.ol-head{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 26px;font-size:21px;font-weight:700;gap:14px}
+.ol-head .pill{font-size:14px;font-weight:700;padding:5px 12px;border-radius:99px;background:#EEF2F8;color:#1F5FAD}
+.ol-list{position:absolute;top:62px;left:0;right:0;bottom:0;overflow:hidden}
+.mrow{position:absolute;left:0;right:0;height:72px;border-bottom:1px solid #EFF0F2;padding:12px 26px 0 36px;background:#fff;transform-origin:50% 0}
+.mrow .bar{position:absolute;left:0;top:0;bottom:0;width:5px;background:#1F5FAD}
+.mrow .snd{font-size:16px;font-weight:700;color:#1E2228}
+.mrow .tm{position:absolute;right:26px;top:13px;font-size:14px;color:var(--mut)}
+.mrow .sub{font-size:16px;color:#1F5FAD;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92%}
+.mrow.imp{background:#FFF7F6}
+.mrow.imp .bar{background:var(--red)}
+.mrow.imp .sub{color:#B0000A}
+.mrow .flag{position:absolute;right:26px;top:38px;font-size:13px;font-weight:800;color:#fff;background:var(--red);border-radius:6px;padding:3px 8px;letter-spacing:.02em}
+
+/* Webex */
+.wx-body{position:absolute;top:46px;left:0;right:0;bottom:0;display:flex}
+.wx-rail{width:70px;background:#F4F4F5;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding-top:18px;gap:10px}
+.wx-rail .ri{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.wx-rail .ri.act{background:#E4E5E8}
+.wx-rail svg{width:26px;height:26px;stroke:#3C4048;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wx-me{width:40px;height:40px;border-radius:50%;background:#5B6B8C;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.wx-spaces{width:340px;border-right:1px solid var(--line);position:relative;background:#fff}
+.wx-search{margin:16px 16px 10px;height:44px;border-radius:12px;background:#F2F3F5;display:flex;align-items:center;padding:0 14px;gap:10px;font-size:16px;color:var(--mut2);position:relative}
+.wx-search svg{width:18px;height:18px;stroke:#8A9099;fill:none;stroke-width:2.2}
+.wx-search .q{color:var(--ink);font-weight:600}
+.wx-search .caret{display:inline-block;width:2px;height:20px;background:var(--red);vertical-align:middle;margin-left:1px}
+.wx-team{padding:10px 22px 8px;font-size:13px;font-weight:800;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+.sp{display:flex;align-items:center;gap:13px;padding:10px 18px;margin:2px 8px;border-radius:12px;position:relative}
+.sp img{width:46px;height:46px;border-radius:12px;flex:none}
+.sp .nm{font-size:18px;font-weight:700}
+.sp .pv{font-size:15px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:2px}
+.sp.act{background:#F1F2F4}
+.sp .bdg{position:absolute;right:16px;top:50%;transform:translateY(-50%);min-width:26px;height:26px;border-radius:13px;background:var(--red);
+  color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 7px}
+.wx-chat{flex:1;position:relative;background:#fff;overflow:hidden}
+.wx-head{height:110px;border-bottom:1px solid var(--line);padding:16px 28px 0}
+.wx-head .row1{display:flex;align-items:center;gap:14px}
+.wx-head img{width:40px;height:40px;border-radius:10px}
+.wx-head .hn{font-size:22px;font-weight:800}
+.wx-tabs{display:flex;gap:30px;margin-top:16px;font-size:16px;font-weight:600;color:var(--mut)}
+.wx-tabs span{padding-bottom:10px;border-bottom:3px solid transparent}
+.wx-tabs span.act{color:var(--ink);border-color:var(--ink)}
+.wx-msgs{position:absolute;top:110px;left:0;right:0;bottom:92px;overflow:hidden}
+.wx-stack{position:absolute;left:0;right:0;bottom:0;padding:0 28px 10px}
+.wx-comp{position:absolute;left:24px;right:24px;bottom:22px;height:54px;border:1.5px solid #DADCE0;border-radius:14px;display:flex;align-items:center;padding:0 18px;font-size:16px;color:var(--mut2)}
+.mw{overflow:hidden}
+.msg{display:flex;gap:14px;padding:12px 0 10px}
+.av{width:44px;height:44px;border-radius:50%;flex:none;color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}
+.msg .who{font-size:17px;font-weight:700}
+.msg .who .tm{font-weight:500;color:var(--mut2);font-size:14px;margin-left:8px}
+.msg .tx{font-size:21px;line-height:1.42;margin-top:3px;color:#22252B;max-width:690px}
+.mention{background:#FDE7E5;color:#B3000B;font-weight:700;border-radius:6px;padding:0 5px}
+.file{display:inline-flex;align-items:center;gap:12px;margin-top:10px;border:1.5px solid var(--line);border-radius:12px;padding:10px 16px;font-size:16px;font-weight:600}
+.file .ext{width:38px;height:44px;border-radius:7px;background:var(--red);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px}
+.reacts{display:flex;gap:10px;margin-top:10px}
+.react{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:99px;padding:5px 14px 5px 10px;font-size:18px;font-weight:700;background:#fff}
+.react.mine{border-color:#F3A7A1;background:#FFF3F2;color:#B3000B}
+.react .e{font-size:20px}
+.react .n{font-variant-numeric:tabular-nums;min-width:12px}
+.thread{margin-left:58px;border-left:3px solid #E3E4E7;padding-left:18px}
+.thread .av{width:36px;height:36px;font-size:14px}
+.thread .tx{font-size:20px}
+.tlabel{margin-left:58px;font-size:15px;font-weight:700;color:var(--red);padding:2px 0 6px}
+.code{margin-top:8px;background:#F6F7F9;border:1.5px solid var(--line);border-radius:12px;padding:14px 18px;font-size:20px;line-height:1.45;color:#2A2E35}
+.pinbar{position:absolute;left:0;right:0;top:110px;height:58px;background:#FFF7F6;border-bottom:1px solid #F6D3D0;display:flex;align-items:center;gap:12px;padding:0 28px;font-size:17px;z-index:3}
+.pinbar b{color:#B3000B}
+.pinicon{font-size:20px}
+
+/* Linke Spalte */
+.fc{position:absolute;left:96px;top:0;width:500px}
+.fc .ico{position:absolute;left:0;top:178px;width:176px;height:176px;border-radius:40px;overflow:hidden;box-shadow:0 22px 50px rgba(214,0,0,.28)}
+.fc .ico img{width:100%;height:100%;display:block}
+.fc .kick{position:absolute;left:2px;top:392px;font-size:18px;font-weight:800;letter-spacing:.14em;color:var(--red)}
+.fc .ttl{position:absolute;left:0;top:422px;font-size:56px;line-height:1.06;font-weight:800;letter-spacing:-.02em;width:500px}
+.chips{position:absolute;left:0;top:572px;display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.chip{display:flex;align-items:center;gap:14px;background:#fff;border-radius:99px;padding:10px 24px 10px 10px;font-size:24px;font-weight:700;
+  box-shadow:0 10px 26px rgba(20,22,40,.08);white-space:nowrap}
+.chip .ci{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--red1),var(--red2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800}
+
+/* Allgemein */
+.headline{position:absolute;font-weight:800;letter-spacing:-.02em}
+.bigq{position:absolute;width:190px;height:190px;border-radius:50%;background:linear-gradient(135deg,var(--red1),var(--red2));color:#fff;
+  font-size:130px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 60px rgba(214,0,0,.35)}
+.tag{position:absolute;background:#fff;border-radius:16px;padding:14px 22px;font-size:24px;font-weight:700;box-shadow:0 14px 34px rgba(20,22,40,.12);white-space:nowrap}
+.cursor{position:absolute;width:34px;height:34px;z-index:20;opacity:0;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.ripple{position:absolute;width:60px;height:60px;border-radius:50%;border:3px solid var(--red);z-index:19}
+.label{position:absolute;font-size:20px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.card-lbl{display:flex;align-items:center;gap:12px}
+
+/* Meeting / Slido */
+.meet{position:absolute;background:#16171B;border-radius:22px;overflow:hidden;box-shadow:0 34px 90px rgba(20,22,40,.25)}
+.tile{position:absolute;background:#26282E;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.tile .av{width:96px;height:96px;font-size:32px}
+.tile .nmt{position:absolute;left:14px;bottom:12px;color:#fff;font-size:15px;font-weight:600;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:8px}
+.ctrl{position:absolute;left:0;bottom:0;height:86px;display:flex;align-items:center;justify-content:center;gap:16px}
+.cb{width:52px;height:52px;border-radius:50%;background:#2E3036}
+.cb.end{background:#E0242E;width:78px;border-radius:26px}
+.slido{position:absolute;top:0;right:0;bottom:0;width:430px;background:#fff;padding:26px 28px}
+.slido .sh{display:flex;align-items:center;justify-content:space-between;font-size:20px;font-weight:800}
+.slido .live{font-size:13px;font-weight:800;color:#fff;background:#1D9E58;border-radius:6px;padding:3px 8px;letter-spacing:.06em}
+.slido .q{font-size:21px;font-weight:700;line-height:1.35;margin:26px 0 22px}
+.opt{margin-bottom:20px}
+.opt .ol{display:flex;justify-content:space-between;font-size:17px;font-weight:600;margin-bottom:8px}
+.opt .tr{height:14px;border-radius:7px;background:#EEF0F2;overflow:hidden}
+.opt .fi{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--red1),var(--red2))}
+.anon{display:inline-flex;align-items:center;gap:10px;margin-top:14px;background:#15171C;color:#fff;border-radius:99px;padding:9px 18px;font-size:17px;font-weight:700}
+
+/* Notifications */
+.pop{position:absolute;background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(20,22,40,.22);padding:22px 24px;width:430px;z-index:10}
+.pop .ph{font-size:18px;font-weight:800;display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.radio{display:flex;align-items:center;gap:14px;padding:11px 6px;font-size:18px;font-weight:600;border-radius:10px}
+.radio .rb{width:22px;height:22px;border-radius:50%;border:2px solid #B9BDC4;position:relative;flex:none}
+.radio .rb i{position:absolute;inset:4px;border-radius:50%;background:var(--red)}
+
+/* Schluss */
+.endbg{position:absolute;inset:0;background:linear-gradient(135deg,var(--red1),var(--red2))}
+.endicon{position:absolute;width:150px;height:150px;border-radius:36px;overflow:hidden;box-shadow:0 18px 40px rgba(80,0,0,.35),0 0 0 5px rgba(255,255,255,.9)}
+.endicon img{width:100%;height:100%}
+.cta{position:absolute;background:#fff;border-radius:24px;box-shadow:0 30px 70px rgba(80,0,0,.3);padding:30px 44px}
+.cta .k{font-size:18px;font-weight:800;color:var(--red);letter-spacing:.14em;text-transform:uppercase;margin-bottom:16px}
+.cta .r{display:flex;align-items:center;gap:18px;font-size:30px;font-weight:700;margin:10px 0}
+.cta .arr{color:var(--red);font-weight:800}
+.cta .dst{font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// ---------- Hilfsfunktionen ----------
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const E={
+  out:x=>1-Math.pow(1-x,3),
+  inout:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.5,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);},
+  lin:x=>x,
+};
+const P=(t,s,d=.45,e=E.out)=>e(clamp((t-s)/d));
+const lerp=(a,b,k)=>a+(b-a)*k;
+const $=id=>document.getElementById(id);
+function st(el,{o,x,y,s,r,sx,sy}={}){
+  if(typeof el==='string') el=$(el);
+  if(!el) return;
+  if(o!==undefined) el.style.opacity=o;
+  const tr=[];
+  if(x!==undefined||y!==undefined) tr.push(`translate(${x||0}px,${y||0}px)`);
+  if(s!==undefined) tr.push(`scale(${s})`);
+  if(sx!==undefined) tr.push(`scaleX(${sx})`);
+  if(sy!==undefined) tr.push(`scaleY(${sy})`);
+  if(r!==undefined) tr.push(`rotate(${r}deg)`);
+  el.style.transform=tr.join(' ');
+}
+const show=(el,t,s,d=.4,dy=14)=>{const k=P(t,s,d);st(el,{o:k,y:(1-k)*dy});return k;};
+const pop=(el,t,s,d=.45)=>{const k=P(t,s,d,E.back);st(el,{o:clamp(k*2),s:Math.max(0,k)});return k;};
+
+let CUE=null, SFX=[];
+// Startzeit des n-ten Worts, das mit prefix beginnt
+function W(prefix,n=0){
+  let c=0;
+  for(const w of CUE.words){ if(w.t.replace(/^[„"]/,'').startsWith(prefix)){ if(c===n) return w.s; c++; } }
+  throw new Error('Cue fehlt: '+prefix+' in Szene '+CUE.scene);
+}
+const sfx=(t,type,vol=1)=>SFX.push({t:+t.toFixed(3),type,vol});
+
+// ---------- Daten ----------
+const ICON={
+  upd:'../icons/01_wichtige_updates.png', anw:'../icons/02c_anwesenheit_orte.png',
+  ter:'../icons/03_terminfindung.png', day:'../icons/04_daily_stuff.png', ki:'../icons/05_ki_technik.png'
+};
+const SPACES=[
+  {k:'upd',n:'Wichtige Updates',pv:'Neue Kreditrichtlinie ab 01.12.'},
+  {k:'anw',n:'Anwesenheit',pv:'Heute im Büro, 4. OG'},
+  {k:'ter',n:'Terminfindung',pv:'Teamrunde: Di oder Mi?'},
+  {k:'day',n:'Daily Stuff',pv:'Kuchen in der Kaffeeküche!'},
+  {k:'ki',n:'KI & Technik',pv:'Prompt für Skipi'},
+];
+const PEOPLE={
+  KV:{n:'Katrin Vogel',c:'#7A4FD0'}, TM:{n:'Tobias Meier',c:'#0F8B8D'}, SB:{n:'Sabine Brandt',c:'#D9480F'},
+  JW:{n:'Jonas Weber',c:'#2F6FDB'}, LH:{n:'Lea Hoffmann',c:'#C2255C'}, AK:{n:'Anna Keller',c:'#2B8A3E'},
+};
+
+// ---------- Bausteine ----------
+const SVG={
+  chat:'<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  team:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4.3 1.4 5 4"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  call:'<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  cursor:'<svg viewBox="0 0 24 24"><path d="M4 2l16 9.5-7 1.6L9.5 20z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#B3000B" stroke-width="2.2" stroke-linecap="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>',
+};
+function av(code,size){const p=PEOPLE[code];return `<div class="av" style="background:${p.c}${size?`;width:${size}px;height:${size}px`:''}">${code}</div>`;}
+function msg(id,code,time,html,extra='',cls=''){
+  return `<div class="mw ${cls}" id="${id}"><div class="msg">${av(code)}<div><div class="who">${PEOPLE[code].n}<span class="tm">${time}</span></div><div class="tx">${html}</div>${extra}</div></div></div>`;
+}
+function reacts(id,list){return `<div class="reacts">${list.map((r,i)=>`<span class="react${r.mine?' mine':''}" id="${id}-r${i}"><span class="e">${r.e}</span><span class="n" id="${id}-n${i}">${r.n}</span></span>`).join('')}</div>`;}
+
+function outlook(id,x,y,w,h,title='Posteingang'){
+  return `<div class="win" id="${id}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">
+  <div class="tbar"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span><span class="ttl">Outlook – Posteingang</span></div>
+  <div class="ol-body"><div class="ol-folders"><div class="ol-new">Neue E-Mail</div>
+   <div class="ol-f act"><span>Posteingang</span><span class="ol-cnt" id="${id}-cnt">47</span></div>
+   <div class="ol-f"><span>Entwürfe</span><span></span></div><div class="ol-f"><span>Gesendete Elemente</span></div>
+   <div class="ol-f"><span>Archiv</span></div><div class="ol-f"><span>Gelöschte Elemente</span></div></div>
+  <div class="ol-main"><div class="ol-head">${title}<span class="pill" id="${id}-pill">Ungelesen</span></div><div class="ol-list" id="${id}-list"></div></div></div></div>`;
+}
+function mrow(id,m){
+  return `<div class="mrow${m.imp?' imp':''}" id="${id}"><div class="bar"></div><div class="snd">${m.f}</div><div class="tm">${m.t||'08:0'+(Math.abs(m.f.length)%10)}</div><div class="sub">${m.s}</div>${m.imp?'<div class="flag">WICHTIG</div>':''}</div>`;
+}
+function webex(id,x,y,w,h,active=-1,opts={}){
+  const sp=SPACES.map((s,i)=>`<div class="sp${i===active?' act':''}" id="${id}-sp${i}"><img src="${ICON[s.k]}"><div><div class="nm">${s.n}</div><div class="pv">${s.pv}</div></div><div class="bdg" id="${id}-b${i}" style="opacity:0">1</div></div>`).join('');
+  const a=active>=0?SPACES[active]:null;
+  return `<div class="win" id="${id}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">
+  <div class="tbar"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span><span class="ttl">Webex</span></div>
+  <div class="wx-body"><div class="wx-rail"><div class="wx-me">AK</div><div class="ri act">${SVG.chat}</div><div class="ri">${SVG.team}</div><div class="ri">${SVG.cal}</div><div class="ri">${SVG.call}</div></div>
+  <div class="wx-spaces" id="${id}-spaces"><div class="wx-search">${SVG.search}<span id="${id}-q">Suchen</span></div>
+   <div class="wx-team">Team Immobilienfinanzierung</div>${sp}<div id="${id}-extra"></div></div>
+  ${opts.noChat?'':`<div class="wx-chat" id="${id}-chat"><div class="wx-head"><div class="row1"><img id="${id}-hi" src="${a?ICON[a.k]:ICON.upd}"><span class="hn" id="${id}-hn">${a?a.n:''}</span></div>
+   <div class="wx-tabs"><span class="act" id="${id}-t0">Nachrichten</span><span id="${id}-t1">Personen</span><span id="${id}-t2">Inhalte</span><span id="${id}-t3">Whiteboards</span></div></div>
+   <div class="wx-msgs"><div class="wx-stack" id="${id}-stack"></div></div>
+   <div class="wx-comp" id="${id}-comp">Nachricht an ${a?a.n:''} schreiben</div></div>`}
+  </div></div>`;
+}
+function featureCol(iconKey,kick,title,chips){
+  return `<div class="fc" id="fc"><div class="ico" id="fc-ico"><img id="fc-img" src="${ICON[iconKey]}"></div>
+   <div class="kick" id="fc-kick">${kick}</div><div class="ttl" id="fc-ttl">${title}</div>
+   <div class="chips">${chips.map((c,i)=>`<div class="chip" id="chip${i}"><span class="ci">${c[0]}</span>${c[1]}</div>`).join('')}</div></div>`;
+}
+function bg(){return `<div class="blob" style="left:-220px;top:-260px;width:760px;height:760px"></div><div class="blob" style="right:-260px;bottom:-300px;width:820px;height:820px;opacity:.07"></div>`;}
+function cursor(id){return `<div class="ripple" id="${id}-rp" style="opacity:0"></div><div class="cursor" id="${id}">${SVG.cursor}</div>`;}
+function moveCursor(id,t,path){ // path: [[t,x,y],...], Klicks: [t]
+  let x=path[0][1],y=path[0][2];
+  for(let i=1;i<path.length;i++){const [t1,x1,y1]=path[i],[t0,x0,y0]=path[i-1];
+    if(t>=t0){const k=E.inout(clamp((t-t0)/(t1-t0)));x=lerp(x0,x1,k);y=lerp(y0,y1,k);}}
+  const el=$(id);el.style.left=x+'px';el.style.top=y+'px';
+  return [x,y];
+}
+function ripple(id,t,tc,x,y){const k=clamp((t-tc)/.45);const el=$(id+'-rp');
+  el.style.left=(x-30)+'px';el.style.top=(y-30)+'px';el.style.opacity=(t>=tc&&k<1)?(1-k):0;el.style.transform=`scale(${.3+k*.9})`;}
+// Nachrichten mit gemessener Höhe einblenden
+const H={};
+function measure(ids){for(const id of ids){const el=$(id);el.style.height='auto';H[id]=el.offsetHeight;}}
+function grow(id,t,s,d=.4){const k=P(t,s,d);const el=$(id);el.style.height=(H[id]*k)+'px';
+  const inner=el.firstElementChild;inner.style.opacity=clamp(k*1.6-.3);inner.style.transform=`translateY(${(1-k)*16}px)`;return k;}
+function count(id,t,s,d,a,b){const k=P(t,s,d,E.inout);$(id).textContent=Math.round(lerp(a,b,k));return k;}
+
+// ---------- Szenen ----------
+const SC={};
+
+// 1 – Volles Postfach
+SC[1]={
+  build(){
+    const noise=[['Tobias Meier','AW: AW: Kurze Frage'],['Lea Hoffmann','WG: Kuchen?'],['Jonas Weber','Wer hat mein Ladekabel?'],
+      ['Sabine Brandt','Termin Teamrunde – passt Di?'],['Anna Keller','AW: Termin Teamrunde'],['IT-Service','Info: Drucker 3. OG'],
+      ['Tobias Meier','Bin morgen im Homeoffice'],['Katrin Vogel','AW: AW: AW: Termin'],['Lea Hoffmann','Neue Kaffeemaschine!'],
+      ['Jonas Weber','AW: Ladekabel – schwarz, USB-C'],['Sabine Brandt','Kurze Info'],['Anna Keller','Wer kommt mit zum Mittag?'],
+      ['Tobias Meier','AW: WG: Kuchen?'],['Kreditsekretariat','Kreditvorlage Objekt Musterstraße 12',1],['Jonas Weber','Bin heute ab 15 Uhr weg'],
+      ['Lea Hoffmann','AW: AW: Kurze Frage'],['Katrin Vogel','Rückfrage Kunde: Darlehensvertrag',1],['Sabine Brandt','WG: Wer hat mein Ladekabel?'],
+      ['Tobias Meier','Prompt-Idee für Skipi'],['Anna Keller','AW: Mittag?'],['Kreditkomitee','Beschluss Kreditkomitee 14.11.',1],
+      ['Jonas Weber','Drucker geht wieder'],['Lea Hoffmann','AW: AW: AW: Termin'],['Sabine Brandt','Urlaub nächste Woche'],
+      ['Tobias Meier','AW: Kuchen?'],['IT-Service','Wartung Sonntag'],['Anna Keller','Kurze Frage'],['Katrin Vogel','AW: Kurze Info']];
+    this.rows=noise.map((m,i)=>({id:'r'+i,f:m[0],s:m[1],imp:!!m[2],t:`08:${String(2+Math.floor(i/3)).padStart(2,'0')}`}));
+    $('stage').innerHTML=bg()+outlook('ol',250,150,1420,830)+
+      `<div class="headline" id="h1" style="left:250px;top:58px;font-size:46px">Montag, 8:02 Uhr</div>
+       <div class="bigq" id="q" style="left:1560px;top:470px">?</div>
+       <div class="tag" id="tag3" style="left:1180px;top:66px;color:#B3000B">3 davon wichtig</div>`;
+    $('ol-list').innerHTML=this.rows.map(r=>mrow(r.id,r)).join('');
+    const N=this.rows.length, t0=.5, t1=W('Mails')+.5;
+    this.rows.forEach((r,i)=>{ r.at = t0 + (t1-t0)*Math.pow(i/(N-1),.75); });
+    this.rows.forEach((r,i)=>{ if(i%4===1) sfx(r.at,'pop',.25); });
+  },
+  update(t){
+    st('ol',{o:P(t,0,.5),s:lerp(.97,1,P(t,0,.6))});
+    show('h1',t,.15);
+    const R=72;
+    for(const r of this.rows){
+      let y=0; for(const q of this.rows){ if(q.at>r.at) y+=R*P(t,q.at,.28); }
+      const k=P(t,r.at,.28); const el=$(r.id);
+      el.style.top=(y - R*(1-k))+'px'; el.style.opacity=k;
+    }
+    count('ol-cnt',t,.4,W('Mails')+.3-.4,47,112);
+    // Drei wichtig: kurz hervorheben, dann bei "Nur … welche" wieder im Rauschen
+    const kImp=P(t,W('Drei'),.4), kGone=P(t,W('Nur')+.2,.5);
+    for(const r of this.rows){ if(r.imp){ const el=$(r.id); el.style.boxShadow=`inset 0 0 0 ${3*kImp*(1-kGone)}px #E3000F`; } }
+    show('tag3',t,W('Drei'),.4); st('tag3',{o:P(t,W('Drei'),.4)*(1-P(t,W('welche'),.4)),y:(1-P(t,W('Drei'),.4))*12});
+    pop('q',t,W('welche')-.1,.5);
+    const kq=P(t,W('welche')-.1,.5);$('q').style.transform+=` rotate(${(1-kq)*-20}deg)`;
+  },
+  sfxInit(){ sfx(W('welche')-.1,'ping',.5); }
+};
+
+// 2 – Zwischen Kreditvorlagen und Kundenpost
+SC[2]={
+  build(){
+    $('stage').innerHTML=bg()+outlook('ol',250,150,1420,830)+
+     `<div class="tag" id="tg0" style="left:1240px;top:250px">💬 Kurze Infos</div>
+      <div class="tag" id="tg1" style="left:1290px;top:340px">📅 Terminfragen</div>
+      <div class="tag" id="tg2" style="left:1150px;top:430px">🔌 „Hat jemand mein Ladekabel gesehen?“</div>
+      <div class="tag" id="ra" style="left:1300px;top:70px;background:#1F5FAD;color:#fff">↩︎↩︎ Allen antworten</div>`+cursor('cur');
+    $('ol-cnt').textContent='112';
+    // feste Reihenfolge über "key"
+    this.rows=[
+      {id:'a',f:'Kreditsekretariat',s:'Kreditvorlage Objekt Musterstraße 12',imp:1,key:10,at:-1},
+      {id:'b',f:'Katrin Vogel',s:'Rückfrage Kunde: Darlehensvertrag',imp:1,key:20,at:-1},
+      {id:'c',f:'Kreditsekretariat',s:'Kreditvorlage Objekt Am Kanal 3',imp:1,key:30,at:-1},
+      {id:'d',f:'Kundin Fr. Schulz',s:'Unterlagen Anschlussfinanzierung',imp:1,key:40,at:-1},
+      {id:'n0',f:'Sabine Brandt',s:'Kurze Info: Drucker 3. OG',key:15,at:W('Infos')-.1},
+      {id:'n1',f:'Tobias Meier',s:'Termin Teamrunde – passt Di?',key:25,at:W('Terminfragen')},
+      {id:'n2',f:'Jonas Weber',s:'Hat jemand mein Ladekabel gesehen?',key:35,at:W('Hat')+.1},
+      {id:'n3',f:'Lea Hoffmann',s:'AW: Termin Teamrunde',key:12,at:W('alles')},
+      {id:'n4',f:'Anna Keller',s:'Kurze Frage zum Mittag',key:33,at:W('landet')},
+    ];
+    const ra=W('Allen');
+    for(let i=0;i<10;i++) this.rows.push({id:'x'+i,f:['Lea Hoffmann','Tobias Meier','Sabine Brandt','Anna Keller','Katrin Vogel'][i%5],
+      s:'AW: '.repeat(1+(i%3))+'Hat jemand mein Ladekabel gesehen?',key:-i,at:ra+.55+i*.17});
+    $('ol-list').innerHTML=this.rows.map(r=>mrow(r.id,r)).join('');
+    this.rows.filter(r=>r.id[0]==='x').forEach((r,i)=>{ if(i%2===0) sfx(r.at,'pop',.3); });
+    ['Infos','Terminfragen','Hat'].forEach(w=>sfx(W(w),'pop',.45));
+    sfx(ra+.35,'click',.6);
+  },
+  update(t){
+    st('ol',{o:1});
+    const R=72;
+    for(const r of this.rows){
+      let y=0; for(const q of this.rows){ if(q.key<r.key) y+=R*(q.at<0?1:P(t,q.at,.32)); }
+      const k=r.at<0?1:P(t,r.at,.32); const el=$(r.id);
+      el.style.top=(y-(r.at<0?0:R*.4*(1-k)))+'px'; el.style.opacity=k;
+    }
+    // wichtige Zeilen bei "Kreditvorlagen" / "Kundenpost" hervorheben
+    const kk=P(t,W('Kreditvorlagen'),.35)*(1-P(t,W('Allen')-.3,.4));
+    ['a','b','c','d'].forEach(id=>{$(id).style.boxShadow=`inset 0 0 0 ${3*kk}px #E3000F`;});
+    ['tg0','tg1','tg2'].forEach((id,i)=>{const s=[W('Infos')-.1,W('Terminfragen'),W('Hat')][i];
+      const k=P(t,s,.45,E.back),out=P(t,W('Und')-.1,.35);st(id,{o:clamp(k)*(1-out),s:.85+.15*k,y:-out*20});});
+    // Allen antworten
+    const ra=W('Allen');
+    const kr=P(t,ra-.35,.4,E.back);st('ra',{o:clamp(kr),s:.8+.2*kr});
+    const [cx,cy]=moveCursor('cur',t,[[ra-.6,1720,560],[ra+.3,1420,98]]);
+    $('cur').style.opacity=P(t,ra-.6,.3);
+    ripple('cur',t,ra+.35,1420,98);
+    // Postfach "ächzt"
+    const sh=P(t,ra+.55,.2)*(1-P(t,ra+2.0,.6));
+    st('ol',{o:1,x:Math.sin(t*38)*5*sh});
+    count('ol-cnt',t,ra+.5,1.8,112,124);
+  }
+};
+
+// 3 – Weiche: Neues Kurzes & Internes geht direkt in den Space, Outlook bleibt
+SC[3]={
+  build(){
+    const AVS=['KV','TM','SB','JW','LH'];
+    this.ax=k=>960-160+k*80;
+    $('stage').innerHTML=bg()+outlook('ol',250,150,1420,830)+webex('wx',1070,260,760,700,-1,{noChat:true})+
+      `<div class="abs" id="avrow" style="left:0;top:0">${AVS.map((c,k)=>`<div class="abs" id="ta${k}" style="left:${this.ax(k)-32}px;top:58px">${av(c,64)}</div>`).join('')}</div>
+       <div class="label" id="nlab" style="left:0;width:1920px;text-align:center;top:136px;font-size:17px;color:var(--mut)">Neue Nachrichten</div>
+       <svg class="abs" id="paths" width="1920" height="1080" style="left:0;top:0;pointer-events:none">
+         <g fill="none" stroke="#E3000F" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity=".55">
+           <path id="pv" d="M960 170 L960 382" /><path id="pl" d="M912 430 L850 430" /><path id="pr" d="M1008 430 L1070 430" /></g></svg>
+       <div class="abs" id="node" style="left:912px;top:382px;width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--red1),var(--red2));box-shadow:0 16px 40px rgba(214,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:6">
+         <svg id="arrow" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+       <div class="tag" id="tl0" style="left:90px;top:184px;color:#1F5FAD">Bisherige Mails bleiben, wie sie sind</div>
+       <div class="tag" id="tl1" style="left:90px;top:184px;color:#B3000B">✓ Beschlüsse &amp; Revisionsrelevantes: weiter per Mail</div>
+       <div class="tag" id="tr" style="left:1070px;top:184px">Neues Kurzes &amp; Internes: direkt in den Space</div>
+       <div id="cards"></div>`;
+    $('ol-cnt').textContent='124';
+    const rows=[{f:'Lea Hoffmann',s:'AW: AW: Hat jemand mein Ladekabel gesehen?'},{f:'Kreditsekretariat',s:'Kreditvorlage Objekt Musterstraße 12',imp:1},
+      {f:'Tobias Meier',s:'AW: Termin Teamrunde'},{f:'Sabine Brandt',s:'Kurze Info: Drucker 3. OG'},{f:'Katrin Vogel',s:'Rückfrage Kunde: Darlehensvertrag',imp:1},
+      {f:'Anna Keller',s:'Kurze Frage zum Mittag'},{f:'Jonas Weber',s:'Hat jemand mein Ladekabel gesehen?'},{f:'Kreditsekretariat',s:'Kreditvorlage Objekt Am Kanal 3',imp:1},
+      {f:'Lea Hoffmann',s:'AW: Termin Teamrunde'}].map((r,i)=>({...r,id:'o'+i,t:'08:0'+(i%9)}));
+    this.newRow={id:'onew',f:'Kreditkomitee',s:'🔒 Beschluss Kreditkomitee 14.11.',imp:1,t:'09:12'};
+    $('ol-list').innerHTML=mrow(this.newRow.id,this.newRow)+rows.map(r=>mrow(r.id,r)).join('');
+    this.rows=rows;
+    // Neue Nachrichten: [Absender-Index, Text, Ziel(Space-Index oder 'ol')]
+    const tFlip=W('gar'), tN=W('Nicht'), tNur=W('Nur');
+    this.flips=[[0,180],[tFlip,0],[tN-.15,180],[tNur+.05,0]];
+    this.cards=[
+      {a:3,tx:'Kurze Info: Drucker 3. OG',to:4,at:W('schreiben')-.2,hold:tFlip},
+      {a:1,tx:'Teamrunde: Di oder Mi?',to:2,at:W('gar')+.1},
+      {a:4,tx:'Bin morgen im Homeoffice',to:1,at:W('Mail')-.1},
+      {a:2,tx:'Hat jemand mein Ladekabel gesehen?',to:3,at:W('sondern')+.1},
+      {a:0,tx:'Info: Neue Kreditrichtlinie',to:0,at:W('direkt')+.2},
+      {a:0,tx:'🔒 Beschluss Kreditkomitee 14.11.',to:'ol',at:tN-.55,imp:1},
+      {a:3,tx:'Wer kommt mit zum Mittag?',to:3,at:tNur-.15},
+    ];
+    $('cards').innerHTML=this.cards.map((c,i)=>`<div class="abs" id="c${i}" style="z-index:9;opacity:0;display:flex;align-items:center;gap:10px;background:${c.imp?'#FFF4F3':'#fff'};border-radius:14px;padding:9px 16px 9px 9px;font-size:18px;font-weight:700;white-space:nowrap;box-shadow:0 12px 30px rgba(20,22,40,.18);${c.imp?'color:#B3000B;border:2px solid #F3A7A1':''}">${av(['KV','TM','SB','JW','LH'][c.a],34)}${c.tx}</div>`).join('');
+    this.cards.forEach(c=>{ c.d1=c.at+.55; c.go=Math.max(c.d1,c.hold||0)+.05; c.arr=c.go+.6; });
+    this.cards.forEach((c,i)=>{ sfx(c.arr,'pop',.4); if(i===0) sfx(c.at+.1,'whoosh',.3); });
+    this.flips.slice(1).forEach(f=>sfx(f[0],'click',.55));
+  },
+  update(t){
+    // Outlook rückt nach links, bleibt aber unverändert
+    const k0=P(t,0,.9,E.inout), ol=$('ol');
+    ol.style.left=lerp(250,90,k0)+'px'; ol.style.top=lerp(150,260,k0)+'px';
+    ol.style.width=lerp(1420,760,k0)+'px'; ol.style.height=lerp(830,700,k0)+'px';
+    const wk=P(t,.45,.7); st('wx',{o:wk,x:(1-wk)*120});
+    for(let k=0;k<5;k++) pop('ta'+k,t,.25+k*.07,.45);
+    show('nlab',t,.5);
+    const kp=P(t,.6,.6); ['pv','pl','pr'].forEach(id=>$(id).style.opacity=kp);
+    pop('node',t,.55,.5);
+    // Weichenstellung
+    let ang=180; for(let i=1;i<this.flips.length;i++){ const [tf,a]=this.flips[i],pa=this.flips[i-1][1];
+      if(t>=tf) ang=lerp(pa,a,P(t,tf,.3,E.back)); }
+    $('arrow').style.transform=`rotate(${ang}deg)`;
+    // Karten
+    const N=[960,430];
+    this.cards.forEach((c,i)=>{
+      const el=$('c'+i), A=[this.ax(c.a),92];
+      const T = c.to==='ol' ? [90+250+40,260+46+62+36] : [1070+70+170,260+46+70+28+c.to*70+33];
+      let x,y,s=1,o=1;
+      if(t<c.at){o=0;x=A[0];y=A[1];}
+      else if(t<c.d1){const k=P(t,c.at,.55,E.inout);x=lerp(A[0],N[0],k);y=lerp(A[1],N[1]-70,k);o=clamp((t-c.at)/.15);}
+      else if(t<c.go){x=N[0];y=N[1]-70+Math.sin((t-c.d1)*9)*3;}
+      else {const k=P(t,c.go,.6,E.inout);x=lerp(N[0],T[0],k);y=lerp(N[1]-70,T[1],k)-Math.sin(k*Math.PI)*40;s=lerp(1,.7,k);
+        o=1-P(t,c.arr-.08,.18);}
+      el.style.left=x+'px'; el.style.top=y+'px'; el.style.opacity=o;
+      el.style.transform=`translate(-50%,-50%) scale(${s})`;
+    });
+    // Ankunft in den Spaces
+    SPACES.forEach((sp,i)=>{
+      const arr=this.cards.filter(c=>c.to===i).map(c=>c.arr);
+      const el=$('wx-sp'+i); let g=0; for(const a of arr){const d=t-a; if(d>0&&d<.9) g=Math.max(g,1-d/.9);}
+      el.style.background=`rgba(227,0,15,${.11*g})`;
+      const n=arr.filter(a=>t>=a).length, b=$('wx-b'+i); b.textContent=n; b.style.opacity=n?1:0;
+    });
+    // Outlook: nur der Beschluss kommt neu dazu
+    const cb=this.cards.find(c=>c.to==='ol'); const kb=P(t,cb.arr-.05,.35);
+    $('onew').style.top=(-72*(1-kb))+'px'; $('onew').style.opacity=kb;
+    $('onew').style.boxShadow=`inset 0 0 0 ${3*kb*(1-P(t,cb.arr+1.2,.5))}px #E3000F`;
+    this.rows.forEach((r,i)=>{$(r.id).style.top=(72*(i+kb))+'px';});
+    $('ol-cnt').textContent=t>=cb.arr?'125':'124';
+    // Hinweise
+    const kl0=P(t,.8,.4), kl1=P(t,W('Nicht'),.4,E.back);
+    st('tl0',{o:kl0*(1-P(t,W('Nicht')-.2,.25)),y:(1-kl0)*12});
+    st('tl1',{o:clamp(kl1),s:.9+.1*kl1});
+    show('tr',t,W('direkt'),.4);
+    // Abschluss: Webex rückt in Feature-Position
+    const ke=P(t,W('stört')-.1,.8,E.inout);
+    const fade=1-ke;
+    st('ol',{o:fade,x:-ke*80});
+    ['avrow','nlab','paths','node','cards'].forEach(id=>$(id).style.opacity=Math.min(parseFloat($(id).style.opacity||1),fade));
+    $('avrow').style.opacity=fade; $('cards').style.opacity=fade; $('paths').style.opacity=fade;
+    st('tl1',{o:clamp(kl1)*fade,s:.9+.1*kl1}); st('tr',{o:P(t,W('direkt'),.4)*fade});
+    if(ke>0){ st('node',{o:fade,s:fade}); st('nlab',{o:P(t,.5,.4)*fade}); }
+    const wx=$('wx'); wx.style.left=lerp(1070,640,ke)+'px'; wx.style.width=lerp(760,1200,ke)+'px';
+    wx.style.top=lerp(260,96,ke)+'px'; wx.style.height=lerp(700,888,ke)+'px';
+  }
+};
+
+// Gemeinsamer Aufbau für Feature-Szenen
+function featureScene(active,iconKey,kick,title,chips,msgsHTML){
+  $('stage').innerHTML=bg()+featureCol(iconKey,kick,title,chips)+webex('wx',640,96,1200,888,active)+cursor('cur');
+  $('wx-stack').innerHTML=msgsHTML;
+  SPACES.forEach((s,i)=>{$('wx-b'+i).style.opacity=0;});
+}
+function featIntro(t,chipTimes){
+  pop('fc-ico',t,.0,.55);
+  show('fc-kick',t,.12); show('fc-ttl',t,.2,.45,20);
+  chipTimes.forEach((ct,i)=>{const k=P(t,ct,.45,E.back);st('chip'+i,{o:clamp(k*1.5),x:(1-k)*-30,s:.9+.1*k});});
+}
+
+// 4 – Wichtige Updates
+SC[4]={
+  build(){
+    featureScene(0,'upd','GRUPPE 01','Wichtige Updates',[['📌','Angepinnt'],['🔎','Jederzeit auffindbar'],['@','Erwähnt = informiert']],
+      msg('m1','KV','08:15','Neue Kreditrichtlinie gilt ab 01.12. – die Zusammenfassung hängt an.',
+        `<div class="file"><div class="ext">PDF</div>Kreditrichtlinie_Zusammenfassung.pdf</div>`)+
+      msg('m2','SB','08:31','Danke! Gibt es dazu eine kurze Info-Runde?')+
+      msg('m3','TM','09:02','<span class="mention">@Anna Keller</span> kannst du bis Freitag die Zahlen für Objekt Musterstraße prüfen?'));
+    $('wx-chat').insertAdjacentHTML('beforeend',`<div class="pinbar" id="pin"><span class="pinicon">📌</span><b>Angeheftet:</b> Neue Kreditrichtlinie gilt ab 01.12.</div>`);
+    measure(['m1','m2','m3']);
+    sfx(.45,'pop',.45); sfx(1.6,'pop',.35); sfx(W('angepinnt'),'pop',.5); sfx(W('erwähnt')-.05,'ping',.55);
+  },
+  update(t){
+    featIntro(t,[W('angepinnt'),W('auffindbar'),W('erwähnt')]);
+    grow('m1',t,.45); grow('m2',t,1.6); grow('m3',t,W('erwähnt')-.05);
+    const kp=P(t,W('angepinnt'),.45,E.back); st('pin',{o:clamp(kp),y:(1-kp)*-58});
+    // Suche zeigt "Kreditrichtlinie" bei "auffindbar"
+    const ks=P(t,W('auffindbar')-.1,.3);
+    const word='Kreditrichtlinie', n=Math.round(clamp((t-W('auffindbar'))/0.7)*word.length);
+    $('wx-q').innerHTML = ks>0 ? `<span class="q">${word.slice(0,n)}</span><span class="caret"></span>` : 'Suchen';
+    if(t>W('erwähnt')+.6){ const k=P(t,W('erwähnt')+.6,.25,E.back); const b=$('wx-b0'); b.textContent='@'; st(b,{o:clamp(k)}); b.style.transform=`translateY(-50%) scale(${k})`; }
+    else $('wx-b0').style.opacity=0;
+  }
+};
+
+// 5 – Anwesenheit & Terminfindung
+SC[5]={
+  build(){
+    featureScene(1,'anw','GRUPPE 02','Anwesenheit',[['✓','Ein kurzer Eintrag genügt'],['👍','Abstimmen per Reaktion'],['✕','Statt 20 Antwortmails']],
+      `<div id="partA">`+
+      msg('a1','SB','07:52','🏢 Heute im Büro, 4. OG')+
+      msg('a2','JW','07:58','🏠 Homeoffice – per Webex erreichbar')+
+      msg('a3','LH','08:03','🌴 Urlaub bis Freitag')+
+      msg('a4','AK','08:10','🎓 Schulung bis 14 Uhr, danach im Büro')+`</div>`);
+    $('wx-chat').insertAdjacentHTML('beforeend',`<div class="wx-msgs" id="partBwrap" style="background:#fff;opacity:0"><div class="wx-stack" id="partB">`+
+      msg('b1','KV','09:20','Teamrunde nächste Woche – bitte per Reaktion abstimmen:<br><b>👍 Di, 10:00</b> &nbsp;·&nbsp; <b>🎉 Mi, 14:00</b>',
+        reacts('rc',[{e:'👍',n:1,mine:1},{e:'🎉',n:1}]))+`</div></div>`);
+    $('fc').insertAdjacentHTML('beforeend',`<div class="ico" id="fc-ico2" style="opacity:0"><img src="${ICON.ter}"></div>`);
+    $('stage').insertAdjacentHTML('beforeend',`<div id="mails" class="abs" style="left:110px;top:850px"></div>`);
+    $('mails').innerHTML=Array.from({length:6},(_,i)=>`<div class="abs" id="ml${i}" style="left:${i*18}px;top:${-i*10}px;width:150px;height:96px;border-radius:12px;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.12);border:1.5px solid #E2E5EA;font-size:13px;font-weight:700;color:#1F5FAD;padding:12px">✉︎ AW: Termin</div>`).join('')+
+      `<div class="abs" id="strike" style="left:-14px;top:30px;width:270px;height:8px;border-radius:4px;background:#E3000F;transform-origin:0 50%"></div>`;
+    measure(['a1','a2','a3','a4','b1']);
+    this.tB=W('Und')-.25;
+    sfx(W('Büro'),'pop',.4); sfx(W('Homeoffice'),'pop',.4); sfx(W('Urlaub'),'pop',.4); sfx(W('Eintrag'),'pop',.4);
+    sfx(this.tB,'whoosh',.3); sfx(this.tB+.4,'pop',.4); sfx(W('Klick')+.1,'click',.6);
+  },
+  update(t){
+    const tB=this.tB;
+    featIntro(t,[W('Eintrag'),W('Klick'),W('statt')]);
+    grow('a1',t,W('Büro')); grow('a2',t,W('Homeoffice')); grow('a3',t,W('Urlaub')); grow('a4',t,W('Eintrag'));
+    // Wechsel zu Terminfindung
+    const kB=P(t,tB,.5,E.inout);
+    st('fc-ico',{o:1-kB,s:1-.1*kB}); const k2=P(t,tB+.1,.55,E.back); st('fc-ico2',{o:clamp(k2),s:Math.max(0,k2)});
+    if(t>=tB+.2){ $('fc-kick').textContent='GRUPPE 03'; $('fc-ttl').textContent='Terminfindung';
+      $('wx-hi').src=ICON.ter; $('wx-hn').textContent='Terminfindung'; $('wx-comp').textContent='Nachricht an Terminfindung schreiben';
+      $('wx-sp1').classList.remove('act'); $('wx-sp2').classList.add('act'); }
+    else { $('fc-kick').textContent='GRUPPE 02'; $('fc-ttl').textContent='Anwesenheit'; $('wx-hi').src=ICON.anw; $('wx-hn').textContent='Anwesenheit';
+      $('wx-comp').textContent='Nachricht an Anwesenheit schreiben'; $('wx-sp2').classList.remove('act'); $('wx-sp1').classList.add('act'); }
+    const kt=t<tB+.2?1-P(t,tB-.2,.4):P(t,tB+.2,.35); st('fc-ttl',{o:kt}); st('fc-kick',{o:kt});
+    $('partBwrap').style.opacity=P(t,tB+.15,.3);
+    grow('b1',t,tB+.4,.45);
+    // Klick auf 👍
+    const tc=W('Klick')+.1;
+    const r0=$('rc-r0').getBoundingClientRect();
+    const tx=r0.left+r0.width/2, ty=r0.top+r0.height/2;
+    moveCursor('cur',t,[[tB+.6,1700,980],[tc,tx-4,ty-2]]);
+    $('cur').style.opacity=P(t,tB+.6,.3);
+    ripple('cur',t,tc,tx,ty);
+    count('rc-n0',t,tc,1.6,1,7); count('rc-n1',t,tc+.3,1.4,1,3);
+    const kr=P(t,tc,.3,E.back); $('rc-r0').style.transform=`scale(${1+.12*Math.sin(clamp((t-tc)/.3)*Math.PI)})`;
+    // 20 Antwortmails durchgestrichen
+    const km=P(t,W('statt')-.2,.4);
+    for(let i=0;i<6;i++) st('ml'+i,{o:P(t,W('statt')-.2+i*.04,.3),y:(1-P(t,W('statt')-.2+i*.04,.3))*20});
+    const kx=P(t,W('Antwortmails'),.35); st('strike',{o:kx>0?1:0,sx:kx,r:-12});
+  }
+};
+
+// 6 – KI & Technik
+SC[6]={
+  build(){
+    featureScene(4,'ki','GRUPPE 05','KI & Technik',[['💬','Frage & Lösung im Thread'],['✨','Prompts für Skipi teilen'],['🔎','Per Suche wiederfinden']],
+      msg('q1','JW','10:12','Drucker 3. OG druckt nur noch leere Seiten 🙈')+
+      `<div class="mw" id="tl"><div class="tlabel">↳ Thread · 2 Antworten</div></div>`+
+      `<div class="mw thread" id="t1"><div class="msg">${av('SB')}<div><div class="who">Sabine Brandt<span class="tm">10:14</span></div><div class="tx">Druckertreiber neu auswählen – dann klappt’s.</div></div></div></div>`+
+      `<div class="mw thread" id="t2"><div class="msg">${av('JW')}<div><div class="who">Jonas Weber<span class="tm">10:16</span></div><div class="tx">Läuft wieder, danke! ✅</div></div></div></div>`+
+      msg('p1','AK','11:05','Prompt für Skipi, der bei Exposés richtig Zeit spart 💡',
+        `<div class="code">Fasse das Exposé in 5 Stichpunkten zusammen: Lage, Mieter, Laufzeiten, Risiken, offene Fragen.</div>`+
+        reacts('pr',[{e:'👍',n:1},{e:'🙏',n:1},{e:'💡',n:1}])));
+    $('wx-extra').innerHTML=`<div class="abs" id="sres" style="left:16px;top:66px;width:420px;background:#fff;border-radius:14px;box-shadow:0 18px 44px rgba(20,22,40,.18);padding:10px;z-index:12;opacity:0">
+      <div style="font-size:13px;font-weight:800;color:var(--mut);letter-spacing:.06em;padding:8px 10px">NACHRICHTEN</div>
+      <div style="display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px;background:#FFF3F2"><img src="${ICON.ki}" style="width:36px;height:36px;border-radius:9px"><div><div style="font-weight:700;font-size:16px"><mark style="background:#FDE7E5;color:#B3000B">Prompt</mark> für Skipi – Exposé</div><div style="font-size:13px;color:var(--mut)">KI &amp; Technik · Anna Keller</div></div></div>
+      <div style="display:flex;gap:12px;align-items:center;padding:10px"><img src="${ICON.ki}" style="width:36px;height:36px;border-radius:9px"><div><div style="font-weight:700;font-size:16px"><mark style="background:#FDE7E5;color:#B3000B">Prompt</mark>: Protokoll in Stichpunkte</div><div style="font-size:13px;color:var(--mut)">KI &amp; Technik · Tobias Meier</div></div></div>
+      <div style="display:flex;gap:12px;align-items:center;padding:10px"><img src="${ICON.ki}" style="width:36px;height:36px;border-radius:9px"><div><div style="font-weight:700;font-size:16px"><mark style="background:#FDE7E5;color:#B3000B">Prompt</mark>: Mailentwurf glätten</div><div style="font-size:13px;color:var(--mut)">KI &amp; Technik · Lea Hoffmann</div></div></div></div>`;
+    $('wx-spaces').style.overflow='visible';
+    measure(['q1','tl','t1','t2','p1']);
+    sfx(W('streikt'),'pop',.45); sfx(W('Thread'),'pop',.4); sfx(W('Thread')+.6,'pop',.35); sfx(W('Prompts'),'pop',.45); sfx(W('Suche'),'pop',.3);
+  },
+  update(t){
+    featIntro(t,[W('Thread'),W('Prompts'),W('Suche')]);
+    grow('q1',t,W('streikt')-.1);
+    grow('tl',t,W('Thread')-.15,.3); grow('t1',t,W('Thread')); grow('t2',t,W('Thread')+.6);
+    grow('p1',t,W('Prompts')-.1,.5);
+    count('pr-n0',t,W('geteilt'),1.5,1,9); count('pr-n1',t,W('geteilt')+.3,1.4,1,4); count('pr-n2',t,W('genutzt'),1,1,3);
+    const tq=W('Suche')-.1, word='Prompt', n=Math.round(clamp((t-tq)/.55)*word.length);
+    $('wx-q').innerHTML = t>=tq ? `<span class="q">${word.slice(0,n)}</span><span class="caret"></span>` : 'Suchen';
+    const kr=P(t,tq+.55,.35); st('sres',{o:kr,y:(1-kr)*-10});
+  }
+};
+
+// 7 – Daily Stuff
+SC[7]={
+  build(){
+    featureScene(3,'day','GRUPPE 04','Daily Stuff',[['📻','Unser Flurfunk'],['🎂','Erreicht alle – rechtzeitig']],
+      msg('d0','TM','11:40','Hat jemand Lust auf Mittag beim Italiener? 🍝', reacts('dr0',[{e:'🙋',n:3}]))+
+      msg('d1','LH','14:02','🎂 Geburtstagskuchen in der Kaffeeküche, 4. OG – greift zu!',
+        reacts('dk',[{e:'😍',n:1},{e:'🎉',n:1},{e:'🏃',n:1}]))+
+      msg('d2','TM','14:03','Bin unterwegs! 🏃‍♂️'));
+    $('stage').insertAdjacentHTML('beforeend',`<div id="emo" class="abs" style="left:0;top:0;width:1920px;height:1080px;pointer-events:none"></div>`);
+    const em=['😍','🎉','🏃','🎂','😋','👏'];
+    this.parts=Array.from({length:22},(_,i)=>({e:em[i%em.length],x:760+((i*137)%900),d:.15*i,sz:34+(i*7)%22}));
+    $('emo').innerHTML=this.parts.map((p,i)=>`<div class="abs" id="pe${i}" style="font-size:${p.sz}px;opacity:0">${p.e}</div>`).join('');
+    measure(['d0','d1','d2']);
+    sfx(.4,'pop',.3); sfx(W('Kuchen')-.1,'ping',.5); sfx(W('rechtzeitig'),'pop',.45);
+  },
+  update(t){
+    featIntro(t,[W('Flurfunk'),W('erreicht')]);
+    grow('d0',t,.35);
+    const ka=P(t,W('Daily')-.1,.4); $('wx-sp3').style.boxShadow=`0 0 0 ${3*ka*(1-P(t,W('Der'),.5))}px #E3000F`;
+    grow('d1',t,W('Kuchen')-.1,.45);
+    const tr=W('erreicht');
+    count('dk-n0',t,tr,1.6,1,11); count('dk-n1',t,tr+.2,1.5,1,7); count('dk-n2',t,tr+.4,1.4,1,5);
+    this.parts.forEach((p,i)=>{const s=tr+p.d*.6; const k=clamp((t-s)/1.6);
+      st('pe'+i,{o:(t>=s&&k<1)?Math.sin(k*Math.PI):0,x:p.x+Math.sin(k*6+i)*20,y:900-k*560,s:.7+.5*k});});
+    grow('d2',t,W('rechtzeitig'),.4);
+  }
+};
+
+// 8 – Dateien, Whiteboards, Slido
+SC[8]={
+  build(){
+    $('stage').innerHTML=bg()+
+      `<div class="fc" id="fc"><div class="kick" id="fc-kick" style="top:250px">IM SPACE & IM MEETING</div><div class="ttl" id="fc-ttl" style="top:282px">Alles an<br>einem Ort</div>
+       <div class="chips" style="top:470px"><div class="chip" id="chip0"><span class="ci">📄</span>Dateien</div><div class="chip" id="chip1"><span class="ci">✏️</span>Whiteboards</div><div class="chip" id="chip2"><span class="ci">📊</span>Abstimmen per Slido</div><div class="chip" id="chip3"><span class="ci">🕶️</span>Auf Wunsch anonym</div></div></div>`+
+      webex('wx',640,96,1200,888,0)+
+      `<div class="meet" id="meet" style="left:640px;top:96px;width:1200px;height:888px;opacity:0">
+        <div class="tbar" style="background:#1E1F24;border-color:#2A2C31;color:#C9CCD2"><span class="tdot" style="background:#3A3C42"></span><span class="tdot" style="background:#3A3C42"></span><span class="tdot" style="background:#3A3C42"></span><span class="ttl">Teammeeting Immobilienfinanzierung</span></div>
+        ${['KV','TM','SB','JW'].map((c,i)=>`<div class="tile" style="left:${24+(i%2)*372}px;top:${70+Math.floor(i/2)*352}px;width:356px;height:336px">${av(c)}<span class="nmt">${PEOPLE[c].n}</span></div>`).join('')}
+        <div class="ctrl" style="width:770px">${'<div class="cb"></div>'.repeat(4)}<div class="cb end"></div></div>
+        <div class="slido" style="top:46px"><div class="sh">Slido<span class="live">LIVE</span></div>
+          <div class="q">Teamevent im Frühjahr – was darf’s sein?</div>
+          ${[['Bowling',46],['Kochkurs',34],['Stadtführung',20]].map((o,i)=>`<div class="opt"><div class="ol"><span>${o[0]}</span><span id="pv${i}">0 %</span></div><div class="tr"><div class="fi" id="pb${i}" style="width:0"></div></div></div>`).join('')}
+          <div style="font-size:15px;color:var(--mut);margin-top:6px" id="votes">0 Stimmen</div>
+          <div class="anon" id="anon">🕶️ Anonym abstimmen</div></div></div>`;
+    $('wx-stack').innerHTML='';
+    $('wx-chat').insertAdjacentHTML('beforeend',`<div class="abs" id="files" style="left:0;right:0;top:110px;bottom:92px;background:#fff;padding:28px;opacity:0">
+      <div style="font-size:15px;font-weight:800;color:var(--mut);letter-spacing:.06em;margin-bottom:16px">DATEIEN</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      ${[['PDF','Kreditrichtlinie_Zusammenfassung.pdf','#E3000F'],['XLSX','Pipeline_Q1.xlsx','#1D7A45'],['DOCX','Protokoll_Teamrunde.docx','#2B5DB8'],['PPTX','Quartalsbericht.pptx','#C4501B']].map((f,i)=>
+        `<div class="file" id="fl${i}" style="margin:0;padding:14px 18px"><div class="ext" style="background:${f[2]}">${f[0]}</div>${f[1]}</div>`).join('')}</div></div>
+      <div class="abs" id="wb" style="left:0;right:0;top:110px;bottom:92px;background:#fff;padding:28px;opacity:0">
+      <div style="font-size:15px;font-weight:800;color:var(--mut);letter-spacing:.06em;margin-bottom:16px">WHITEBOARDS</div>
+      <div style="width:520px;height:330px;border:1.5px solid var(--line);border-radius:16px;position:relative;background:#FCFCFD">
+        <svg width="520" height="330" style="position:absolute;inset:0"><g fill="none" stroke="#E3000F" stroke-width="4" stroke-linecap="round">
+         <path id="wbp" d="M60 250 C120 120, 200 300, 260 160 S 380 60, 460 120" stroke-dasharray="700" stroke-dashoffset="700"/></g>
+         <g font-family="Inter" font-size="20" font-weight="700" fill="#15171C"><text x="40" y="60">Pipeline Q1</text></g>
+         <rect x="330" y="200" width="150" height="70" rx="10" fill="#FFF3B0"/><text x="345" y="242" font-family="Inter" font-size="17" font-weight="600" fill="#5A4A00">Neue Objekte!</text></svg></div></div>`);
+    sfx(W('Dateien'),'pop',.4); sfx(W('Whiteboards'),'pop',.4); sfx(W('Teammeeting')-.2,'whoosh',.35); sfx(W('anonym'),'pop',.45);
+  },
+  update(t){
+    show('fc-kick',t,0); show('fc-ttl',t,.1,.45,20);
+    [W('Dateien'),W('Whiteboards'),W('Slido')-.2,W('anonym')].forEach((ct,i)=>{const k=P(t,ct,.45,E.back);st('chip'+i,{o:clamp(k*1.5),x:(1-k)*-30,s:.9+.1*k});});
+    st('wx',{o:P(t,0,.3)});
+    const tf=W('Dateien'), tw=W('Whiteboards');
+    ['wx-t0','wx-t2','wx-t3'].forEach(id=>$(id).classList.remove('act'));
+    $(t<tf?'wx-t0':t<tw+.2?'wx-t2':'wx-t3').classList.add('act');
+    $('files').style.opacity=P(t,tf,.25)*(1-P(t,tw+.2,.25));
+    for(let i=0;i<4;i++) show('fl'+i,t,tf+.08*i,.3);
+    $('wb').style.opacity=P(t,tw+.2,.25);
+    $('wbp').setAttribute('stroke-dashoffset',700*(1-P(t,tw+.3,1.2,E.inout)));
+    const tm=W('Teammeeting')-.25; const km=P(t,tm,.55,E.inout);
+    st('meet',{o:km,y:(1-km)*60,s:.96+.04*km});
+    const vals=[46,34,20], tv=W('Slido')-.1;
+    vals.forEach((v,i)=>{const k=P(t,tv+i*.1,1.4,E.inout); $('pb'+i).style.width=(v*k)+'%'; $('pv'+i).textContent=Math.round(v*k)+' %';});
+    count('votes',t,tv,1.4,0,14); $('votes').textContent+=' Stimmen';
+    const ka=P(t,W('anonym')-.1,.45,E.back); st('anon',{o:clamp(ka),s:.8+.2*ka});
+  }
+};
+
+// 9 – Outlook bleibt
+SC[9]={
+  build(){
+    $('stage').innerHTML=bg()+
+      `<div class="headline" id="hl" style="left:0;width:1920px;text-align:center;top:56px;font-size:58px">Und Outlook? <span id="hl2" style="color:#E3000F;display:inline-block">Bleibt.</span></div>`+
+      `<div class="label card-lbl" id="l1" style="left:130px;top:182px;color:#1F5FAD">✉︎&nbsp; Outlook · Mail</div>`+
+      `<div class="label card-lbl" id="l2" style="left:1000px;top:182px;color:#E3000F"><img src="${ICON.upd}" style="width:30px;height:30px;border-radius:8px">&nbsp; Webex-Space</div>`+
+      `<div class="win" id="olc" style="left:130px;top:230px;width:790px;height:470px"><div class="tbar"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span><span class="ttl">Outlook – Posteingang</span></div><div class="ol-list" id="olc-list" style="top:46px"></div></div>`+
+      `<div class="win" id="wxc" style="left:1000px;top:230px;width:790px;height:470px"><div class="tbar"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span><span class="ttl">Webex</span></div>
+        <div style="padding:18px 10px">${SPACES.map((s,i)=>`<div class="sp" id="ws${i}"><img src="${ICON[s.k]}"><div><div class="nm">${s.n}</div><div class="pv" style="max-width:520px">${s.pv}</div></div></div>`).join('')}</div></div>`+
+      `<div class="tag" id="cap1" style="left:130px;top:736px;font-size:26px">Beschlüsse &amp; Revisionsrelevantes</div>`+
+      `<div class="tag" id="cap2" style="left:1000px;top:736px;font-size:26px">Kurz, intern, schnell</div>`+
+      `<div class="pop" id="np" style="left:1340px;top:420px"><div class="ph">${SVG.bell} Benachrichtigungen · Daily Stuff</div>
+        <div class="radio" id="o0"><span class="rb"><i id="i0"></i></span>Alle Nachrichten</div>
+        <div class="radio" id="o1"><span class="rb"><i id="i1"></i></span>Nur @Erwähnungen</div>
+        <div class="radio" id="o2"><span class="rb"><i id="i2"></i></span>Aus</div></div>`+cursor('cur');
+    const rows=[{id:'b0',f:'Kreditkomitee',s:'🔒 Beschluss Kreditkomitee – Objekt Musterstraße 12',imp:1,t:'09:12'},
+      {id:'b1',f:'Kreditsekretariat',s:'🔒 Revisionsrelevant: Dokumentation Kreditentscheidung',imp:1,t:'10:40'},
+      {id:'b2',f:'Katrin Vogel',s:'🔒 Beschluss: Konditionen Q1',imp:1,t:'11:05'},
+      {id:'b3',f:'Kundin Fr. Schulz',s:'Unterlagen Anschlussfinanzierung',t:'11:30'}];
+    $('olc-list').innerHTML=rows.map((r,i)=>mrow(r.id,r)).join('');
+    rows.forEach((r,i)=>{$(r.id).style.top=(i*72)+'px';});
+    sfx(W('Bleibt'),'pop',.5); sfx(W('Beschlüsse'),'pop',.35); sfx(W('Revisionsrelevante'),'pop',.35);
+    sfx(W('laut')-.1,'pop',.4); sfx(W('selbst')+.05,'click',.6);
+  },
+  update(t){
+    show('hl',t,0,.4); const kb=P(t,W('Bleibt'),.4,E.back); st('hl2',{o:clamp(kb*1.5),s:.7+.3*kb});
+    const kc=P(t,.15,.6,E.out); st('olc',{o:kc,x:(1-kc)*-60}); st('wxc',{o:kc,x:(1-kc)*60});
+    show('l1',t,.3); show('l2',t,.4);
+    show('b0',t,W('Beschlüsse')-.1,.35); show('b1',t,W('Revisionsrelevante')-.1,.35); show('b2',t,W('Revisionsrelevante')+.4,.35); show('b3',t,.3,.35);
+    show('cap1',t,W('verschicken'),.4); show('cap2',t,W('Und',1),.4);
+    SPACES.forEach((s,i)=>show('ws'+i,t,.5+i*.08,.35));
+    const kn=P(t,W('laut')-.1,.4,E.back); st('np',{o:clamp(kn),s:.9+.1*kn});
+    const sel=t>=W('selbst')+.05?1:0;
+    ['i0','i1','i2'].forEach((id,i)=>{$(id).style.opacity=(i===sel)?1:0;});
+    $('o1').style.background=sel===1?'#FFF3F2':'transparent';
+    const o1=$('o1').getBoundingClientRect();
+    const tx=o1.left+40, ty=o1.top+o1.height/2;
+    moveCursor('cur',t,[[W('laut')+.2,1820,1040],[W('selbst')-.1,tx,ty]]);
+    $('cur').style.opacity=P(t,W('laut')+.2,.3);
+    ripple('cur',t,W('selbst')+.05,tx,ty);
+  }
+};
+
+// 10 – Schluss
+SC[10]={
+  build(){
+    const keys=['upd','anw','ter','day','ki'];
+    $('stage').innerHTML=`<div class="endbg"></div>`+
+      keys.map((k,i)=>`<div class="endicon" id="ei${i}" style="left:${540+i*180}px;top:150px;width:120px;height:120px;border-radius:30px"><img src="${ICON[k]}"></div>`).join('')+
+      `<div class="headline" id="e1" style="left:0;width:1920px;text-align:center;top:330px;font-size:84px;color:#fff">Kurz und intern?</div>
+       <div class="headline" id="e2" style="left:0;width:1920px;text-align:center;top:438px;font-size:84px;color:#fff">Ab in den Space.</div>
+       <div class="cta" id="cta" style="left:460px;top:640px;width:1000px">
+         <div class="k">Ab sofort</div>
+         <div class="r"><span>Kurz &amp; intern</span><span class="arr">→</span><span class="dst">Webex-Space</span></div>
+         <div class="r"><span>Beschlüsse &amp; Revisionsrelevantes</span><span class="arr">→</span><span class="dst">Mail</span></div></div>`;
+    for(let i=0;i<5;i++) sfx(.25+i*.12,'pop',.3);
+    sfx(W('Ab')-.05,'whoosh',.3);
+  },
+  update(t){
+    for(let i=0;i<5;i++){const k=P(t,.2+i*.12,.5,E.back); st('ei'+i,{o:clamp(k*1.5),s:Math.max(0,k),y:Math.sin(t*1.6+i)*4});}
+    const k1=P(t,W('Kurz')-.1,.45); st('e1',{o:k1,y:(1-k1)*24});
+    const k2=P(t,W('Ab')-.05,.45,E.back); st('e2',{o:clamp(k2*1.4),s:.9+.1*k2});
+    const k3=P(t,W('Das')-.2,.6); st('cta',{o:k3,y:(1-k3)*40});
+  }
+};
+
+// ---------- Steuerung ----------
+window.initScene=async function(n,cue){
+  CUE={...cue,words:cue.words.map(w=>({...w,t:w.t.replace('/ˈskɪpi/','Skipi').replace('/ˈslaɪdo/','Slido')}))}; SFX=[];
+  await document.fonts.load('700 20px Inter'); await document.fonts.load('20px "Noto Color Emoji"');
+  SC[n].build();
+  if(SC[n].sfxInit) SC[n].sfxInit();
+  await Promise.all([...document.images].map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r;})));
+  await document.fonts.ready;
+  // Höhen nach Font-Laden nachmessen
+  for(const id of Object.keys(H)) if($(id)) { $(id).style.height='auto'; H[id]=$(id).offsetHeight; }
+  window.SCENE=SC[n];
+  return SFX;
+};
+window.renderAt=function(t){ window.SCENE.update(t); };
+</script>
+</body>
+</html>
