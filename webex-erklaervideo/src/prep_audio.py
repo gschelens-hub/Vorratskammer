@@ -8,7 +8,7 @@ import json, subprocess, sys, re, os
 FPS = 30
 TEMPO = 1.12          # Sprechtempo-Faktor (Rubberband, Tonhöhe bleibt)
 LEAD, TAIL = 0.22, 0.35
-FIRST_LEAD, LAST_TAIL = 0.6, 1.5
+FIRST_LEAD, LAST_TAIL = 0.6, 1.2
 PAD_PRE, PAD_POST = 0.04, 0.10   # Sicherheitsrand beim Ausschneiden
 
 vo, words_path, out = sys.argv[1:4]
