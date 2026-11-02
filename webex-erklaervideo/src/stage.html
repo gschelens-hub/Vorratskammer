@@ -376,75 +376,104 @@ SC[2]={
   }
 };
 
-// 3 – Umzug in den Webex-Space
+// 3 – Weiche: Neues Kurzes & Internes geht direkt in den Space, Outlook bleibt
 SC[3]={
   build(){
-    $('stage').innerHTML=bg()+outlook('ol',250,150,1420,830)+webex('wx',1020,120,830,860,-1,{noChat:true})+
-      `<div id="fly"></div><div class="tag" id="stay" style="left:120px;top:84px;color:#B3000B">✓ Wichtiges bleibt in Outlook</div>
-       <div class="tag" id="go" style="left:1060px;top:42px">→ Kurzes & Internes in den Space</div>`;
+    const AVS=['KV','TM','SB','JW','LH'];
+    this.ax=k=>960-160+k*80;
+    $('stage').innerHTML=bg()+outlook('ol',250,150,1420,830)+webex('wx',1070,260,760,700,-1,{noChat:true})+
+      `<div class="abs" id="avrow" style="left:0;top:0">${AVS.map((c,k)=>`<div class="abs" id="ta${k}" style="left:${this.ax(k)-32}px;top:58px">${av(c,64)}</div>`).join('')}</div>
+       <div class="label" id="nlab" style="left:0;width:1920px;text-align:center;top:136px;font-size:17px;color:var(--mut)">Neue Nachrichten</div>
+       <svg class="abs" id="paths" width="1920" height="1080" style="left:0;top:0;pointer-events:none">
+         <g fill="none" stroke="#E3000F" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity=".55">
+           <path id="pv" d="M960 170 L960 382" /><path id="pl" d="M912 430 L850 430" /><path id="pr" d="M1008 430 L1070 430" /></g></svg>
+       <div class="abs" id="node" style="left:912px;top:382px;width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--red1),var(--red2));box-shadow:0 16px 40px rgba(214,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:6">
+         <svg id="arrow" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+       <div class="tag" id="tl0" style="left:90px;top:184px;color:#1F5FAD">Bisherige Mails bleiben, wie sie sind</div>
+       <div class="tag" id="tl1" style="left:90px;top:184px;color:#B3000B">✓ Beschlüsse &amp; Revisionsrelevantes: weiter per Mail</div>
+       <div class="tag" id="tr" style="left:1070px;top:184px">Neues Kurzes &amp; Internes: direkt in den Space</div>
+       <div id="cards"></div>`;
     $('ol-cnt').textContent='124';
-    this.keep=[{id:'k0',f:'Kreditsekretariat',s:'Kreditvorlage Objekt Musterstraße 12',imp:1},
-      {id:'k1',f:'Katrin Vogel',s:'Rückfrage Kunde: Darlehensvertrag',imp:1},
-      {id:'k2',f:'Kreditkomitee',s:'Beschluss Kreditkomitee 14.11.',imp:1}];
-    this.move=[{f:'Sabine Brandt',s:'Kurze Info: Drucker 3. OG',sp:4},{f:'Tobias Meier',s:'Termin Teamrunde – passt Di?',sp:2},
-      {f:'Jonas Weber',s:'Hat jemand mein Ladekabel gesehen?',sp:3},{f:'Lea Hoffmann',s:'Bin morgen im Homeoffice',sp:1},
-      {f:'Katrin Vogel',s:'Info: Neue Kreditrichtlinie',sp:0},{f:'Anna Keller',s:'Kuchen in der Kaffeeküche!',sp:3},
-      {f:'Tobias Meier',s:'AW: AW: Termin Teamrunde',sp:2},{f:'Jonas Weber',s:'Prompt-Idee für Skipi',sp:4}];
-    const rows=[]; let ki=0,mi=0;
-    for(let i=0;i<11;i++){ if(i===1||i===5||i===8){rows.push({...this.keep[ki++],slot:i});} else {rows.push({...this.move[mi],id:'m'+mi,slot:i,mv:mi}); mi++;} }
+    const rows=[{f:'Lea Hoffmann',s:'AW: AW: Hat jemand mein Ladekabel gesehen?'},{f:'Kreditsekretariat',s:'Kreditvorlage Objekt Musterstraße 12',imp:1},
+      {f:'Tobias Meier',s:'AW: Termin Teamrunde'},{f:'Sabine Brandt',s:'Kurze Info: Drucker 3. OG'},{f:'Katrin Vogel',s:'Rückfrage Kunde: Darlehensvertrag',imp:1},
+      {f:'Anna Keller',s:'Kurze Frage zum Mittag'},{f:'Jonas Weber',s:'Hat jemand mein Ladekabel gesehen?'},{f:'Kreditsekretariat',s:'Kreditvorlage Objekt Am Kanal 3',imp:1},
+      {f:'Lea Hoffmann',s:'AW: Termin Teamrunde'}].map((r,i)=>({...r,id:'o'+i,t:'08:0'+(i%9)}));
+    this.newRow={id:'onew',f:'Kreditkomitee',s:'🔒 Beschluss Kreditkomitee 14.11.',imp:1,t:'09:12'};
+    $('ol-list').innerHTML=mrow(this.newRow.id,this.newRow)+rows.map(r=>mrow(r.id,r)).join('');
     this.rows=rows;
-    $('ol-list').innerHTML=rows.map(r=>mrow(r.id,r)).join('');
-    $('fly').innerHTML=this.move.map((m,i)=>`<div class="mrow" id="f${i}" style="position:absolute;width:560px;left:0;top:0;border-radius:14px;box-shadow:0 14px 34px rgba(20,22,40,.18);border:none;z-index:8;opacity:0"><div class="bar" style="border-radius:14px 0 0 14px"></div><div class="snd">${m.f}</div><div class="sub">${m.s}</div></div>`).join('');
-    const s0=W('ziehen'), s1=W('Webex')+.4;
-    this.move.forEach((m,i)=>{ m.at=s0+ (s1-s0)*i/(this.move.length-1); if(i%2===0) sfx(m.at,'whoosh',.35); });
-    sfx(W('Nicht'),'pop',.4);
+    // Neue Nachrichten: [Absender-Index, Text, Ziel(Space-Index oder 'ol')]
+    const tFlip=W('gar'), tN=W('Nicht'), tNur=W('Nur');
+    this.flips=[[0,180],[tFlip,0],[tN-.15,180],[tNur+.05,0]];
+    this.cards=[
+      {a:3,tx:'Kurze Info: Drucker 3. OG',to:4,at:W('schreiben')-.2,hold:tFlip},
+      {a:1,tx:'Teamrunde: Di oder Mi?',to:2,at:W('künftig')},
+      {a:4,tx:'Bin morgen im Homeoffice',to:1,at:W('Mail')-.1},
+      {a:2,tx:'Hat jemand mein Ladekabel gesehen?',to:3,at:W('sondern')+.1},
+      {a:0,tx:'Info: Neue Kreditrichtlinie',to:0,at:W('direkt')+.2},
+      {a:0,tx:'🔒 Beschluss Kreditkomitee 14.11.',to:'ol',at:tN-.55,imp:1},
+      {a:3,tx:'Wer kommt mit zum Mittag?',to:3,at:tNur-.15},
+    ];
+    $('cards').innerHTML=this.cards.map((c,i)=>`<div class="abs" id="c${i}" style="z-index:9;opacity:0;display:flex;align-items:center;gap:10px;background:${c.imp?'#FFF4F3':'#fff'};border-radius:14px;padding:9px 16px 9px 9px;font-size:18px;font-weight:700;white-space:nowrap;box-shadow:0 12px 30px rgba(20,22,40,.18);${c.imp?'color:#B3000B;border:2px solid #F3A7A1':''}">${av(['KV','TM','SB','JW','LH'][c.a],34)}${c.tx}</div>`).join('');
+    this.cards.forEach(c=>{ c.d1=c.at+.55; c.go=Math.max(c.d1,c.hold||0)+.05; c.arr=c.go+.6; });
+    this.cards.forEach((c,i)=>{ sfx(c.arr,'pop',.4); if(i===0) sfx(c.at+.1,'whoosh',.3); });
+    this.flips.slice(1).forEach(f=>sfx(f[0],'click',.55));
   },
   update(t){
-    // Outlook verkleinert sich nach links
-    const k0=P(t,0,.9,E.inout);
-    const ow=lerp(1420,860,k0), ox=lerp(250,90,k0);
-    const ol=$('ol'); ol.style.left=ox+'px'; ol.style.width=ow+'px'; ol.style.top=lerp(150,150,k0)+'px';
-    const wk=P(t,.5,.7,E.out); st('wx',{o:wk,x:(1-wk)*120});
-    for(const r of this.rows){
-      let y=r.slot*72;
-      if(r.mv!==undefined){ const m=this.move[r.mv]; const k=P(t,m.at,.25); $(r.id).style.opacity=1-k; }
-      // nachrutschen
-      let gone=0; for(const q of this.rows){ if(q.mv!==undefined && q.slot<r.slot) gone+=P(t,this.move[q.mv].at+.15,.35); }
-      $(r.id).style.top=(y-gone*72)+'px';
-    }
-    // Flugkarten
-    this.move.forEach((m,i)=>{
-      const k=P(t,m.at,.75,E.inout), el=$('f'+i);
-      const row=this.rows.find(r=>r.mv===i);
-      const sx=ox+250+20, sy=150+46+62+row.slot*72;
-      const tx=1020+70+16, ty=120+46+70+28+m.sp*70;
-      const x=lerp(sx,tx,k), y=lerp(sy,ty,k)-Math.sin(k*Math.PI)*160;
-      el.style.left=x+'px'; el.style.top=y+'px';
-      el.style.opacity=(t>=m.at&&k<1)?(1-P(t,m.at+.55,.2)):0;
-      el.style.transform=`scale(${lerp(1,.55,k)}) rotate(${Math.sin(k*Math.PI)*-4}deg)`;
-      el.style.transformOrigin='0 0';
+    // Outlook rückt nach links, bleibt aber unverändert
+    const k0=P(t,0,.9,E.inout), ol=$('ol');
+    ol.style.left=lerp(250,90,k0)+'px'; ol.style.top=lerp(150,260,k0)+'px';
+    ol.style.width=lerp(1420,760,k0)+'px'; ol.style.height=lerp(830,700,k0)+'px';
+    const wk=P(t,.45,.7); st('wx',{o:wk,x:(1-wk)*120});
+    for(let k=0;k<5;k++) pop('ta'+k,t,.25+k*.07,.45);
+    show('nlab',t,.5);
+    const kp=P(t,.6,.6); ['pv','pl','pr'].forEach(id=>$(id).style.opacity=kp);
+    pop('node',t,.55,.5);
+    // Weichenstellung
+    let ang=180; for(let i=1;i<this.flips.length;i++){ const [tf,a]=this.flips[i],pa=this.flips[i-1][1];
+      if(t>=tf) ang=lerp(pa,a,P(t,tf,.3,E.back)); }
+    $('arrow').style.transform=`rotate(${ang}deg)`;
+    // Karten
+    const N=[960,430];
+    this.cards.forEach((c,i)=>{
+      const el=$('c'+i), A=[this.ax(c.a),92];
+      const T = c.to==='ol' ? [90+250+40,260+46+62+36] : [1070+70+170,260+46+70+28+c.to*70+33];
+      let x,y,s=1,o=1;
+      if(t<c.at){o=0;x=A[0];y=A[1];}
+      else if(t<c.d1){const k=P(t,c.at,.55,E.inout);x=lerp(A[0],N[0],k);y=lerp(A[1],N[1]-70,k);o=clamp((t-c.at)/.15);}
+      else if(t<c.go){x=N[0];y=N[1]-70+Math.sin((t-c.d1)*9)*3;}
+      else {const k=P(t,c.go,.6,E.inout);x=lerp(N[0],T[0],k);y=lerp(N[1]-70,T[1],k)-Math.sin(k*Math.PI)*40;s=lerp(1,.7,k);
+        o=1-P(t,c.arr-.08,.18);}
+      el.style.left=x+'px'; el.style.top=y+'px'; el.style.opacity=o;
+      el.style.transform=`translate(-50%,-50%) scale(${s})`;
     });
-    // Space-Zeilen leuchten beim Ankommen auf
-    SPACES.forEach((s,i)=>{
-      const arrivals=this.move.map((m,j)=>m.sp===i?m.at+.7:99).filter(x=>x<99);
-      const first=Math.min(...arrivals); const el=$('wx-sp'+i);
-      const k=P(t,first-.1,.4,E.back); st(el,{o:clamp(.25+k),s:.92+.08*clamp(k)});
-      let g=0; for(const a of arrivals){ const d=t-a; if(d>0&&d<.8) g=Math.max(g,1-d/.8); }
-      el.style.background=`rgba(227,0,15,${.10*g})`;
-      const b=$('wx-b'+i); b.textContent=arrivals.filter(a=>t>=a).length; b.style.opacity=t>=first?1:0;
+    // Ankunft in den Spaces
+    SPACES.forEach((sp,i)=>{
+      const arr=this.cards.filter(c=>c.to===i).map(c=>c.arr);
+      const el=$('wx-sp'+i); let g=0; for(const a of arr){const d=t-a; if(d>0&&d<.9) g=Math.max(g,1-d/.9);}
+      el.style.background=`rgba(227,0,15,${.11*g})`;
+      const n=arr.filter(a=>t>=a).length, b=$('wx-b'+i); b.textContent=n; b.style.opacity=n?1:0;
     });
-    // Zähler fällt
-    const left=124-Math.round(this.move.reduce((a,m)=>a+P(t,m.at+.2,.3),0)*15.1);
-    $('ol-cnt').textContent=Math.max(3,left);
-    show('go',t,W('Webex')-.2);
-    const ks=P(t,W('Nicht'),.4,E.back); st('stay',{o:clamp(ks),s:.9+.1*ks});
-    this.keep.forEach(k=>{$(k.id).style.boxShadow=`inset 0 0 0 ${3*P(t,W('Nicht'),.3)}px #E3000F`;});
+    // Outlook: nur der Beschluss kommt neu dazu
+    const cb=this.cards.find(c=>c.to==='ol'); const kb=P(t,cb.arr-.05,.35);
+    $('onew').style.top=(-72*(1-kb))+'px'; $('onew').style.opacity=kb;
+    $('onew').style.boxShadow=`inset 0 0 0 ${3*kb*(1-P(t,cb.arr+1.2,.5))}px #E3000F`;
+    this.rows.forEach((r,i)=>{$(r.id).style.top=(72*(i+kb))+'px';});
+    $('ol-cnt').textContent=t>=cb.arr?'125':'124';
+    // Hinweise
+    const kl0=P(t,.8,.4), kl1=P(t,W('Nicht'),.4,E.back);
+    st('tl0',{o:kl0*(1-P(t,W('Nicht')-.2,.25)),y:(1-kl0)*12});
+    st('tl1',{o:clamp(kl1),s:.9+.1*kl1});
+    show('tr',t,W('direkt'),.4);
     // Abschluss: Webex rückt in Feature-Position
     const ke=P(t,W('stört')-.1,.8,E.inout);
-    st('ol',{o:1-ke,x:-ke*80});
-    const wx=$('wx'); wx.style.left=lerp(1020,640,ke)+'px'; wx.style.width=lerp(830,1200,ke)+'px';
-    wx.style.top=lerp(120,96,ke)+'px'; wx.style.height=lerp(860,888,ke)+'px';
-    st('stay',{o:clamp(ks)*(1-ke)}); st('go',{o:P(t,W('Webex')-.2,.4)*(1-ke)});
+    const fade=1-ke;
+    st('ol',{o:fade,x:-ke*80});
+    ['avrow','nlab','paths','node','cards'].forEach(id=>$(id).style.opacity=Math.min(parseFloat($(id).style.opacity||1),fade));
+    $('avrow').style.opacity=fade; $('cards').style.opacity=fade; $('paths').style.opacity=fade;
+    st('tl1',{o:clamp(kl1)*fade,s:.9+.1*kl1}); st('tr',{o:P(t,W('direkt'),.4)*fade});
+    if(ke>0){ st('node',{o:fade,s:fade}); st('nlab',{o:P(t,.5,.4)*fade}); }
+    const wx=$('wx'); wx.style.left=lerp(1070,640,ke)+'px'; wx.style.width=lerp(760,1200,ke)+'px';
+    wx.style.top=lerp(260,96,ke)+'px'; wx.style.height=lerp(700,888,ke)+'px';
   }
 };
 

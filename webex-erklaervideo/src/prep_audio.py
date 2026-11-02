@@ -1,16 +1,18 @@
 """Schneidet die Sprachaufnahme in 10 Szenen, strafft das Tempo und erzeugt cues.json.
 
-Aufruf: python3 -I prep_audio.py <vo.mp3> <words.json> <outdir>
+Aufruf: python3 -I prep_audio.py <vo.mp3> <words.json> <outdir> [N=ersatz.mp3,ersatz_words.json ...]
+  Optional ersetzt N=… die Szene N durch eine separat vertonte Aufnahme.
 """
 import json, subprocess, sys, re, os
 
 FPS = 30
-TEMPO = 1.10          # Sprechtempo-Faktor (Rubberband, Tonhöhe bleibt)
+TEMPO = 1.12          # Sprechtempo-Faktor (Rubberband, Tonhöhe bleibt)
 LEAD, TAIL = 0.22, 0.35
 FIRST_LEAD, LAST_TAIL = 0.6, 1.5
 PAD_PRE, PAD_POST = 0.04, 0.10   # Sicherheitsrand beim Ausschneiden
 
 vo, words_path, out = sys.argv[1:4]
+overrides = {int(a.split("=")[0]): a.split("=")[1].split(",") for a in sys.argv[4:]}
 os.makedirs(out, exist_ok=True)
 words = json.load(open(words_path))["words"]
 
@@ -52,6 +54,19 @@ for i, sc in enumerate(scenes):
     if i == 9: e = min(total, e + 0.25)
     bounds.append((max(0, s - PAD_PRE), min(total, e + PAD_POST)))
 
+srcs = [vo] * 10
+for n, (ovo, ow) in overrides.items():
+    ws = [w for w in json.load(open(ow))["words"] if not (w["text"].startswith("[") and w["text"].endswith("]"))]
+    scenes[n - 1] = ws
+    otot = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", ovo],
+                                capture_output=True, text=True).stdout)
+    osil = silences(ovo)
+    e = ws[-1]["end"]
+    cand = [a for a, b in osil if a >= ws[-1]["start"] + 0.1 and a <= e + 0.6]
+    if cand: e = min(cand)
+    bounds[n - 1] = (max(0, ws[0]["start"] - 0.05 - PAD_PRE), min(otot, e + PAD_POST))
+    srcs[n - 1] = ovo
+
 cues, durations = [], []
 for i, ((s, e), sc) in enumerate(zip(bounds, scenes)):
     lead = FIRST_LEAD if i == 0 else LEAD
@@ -60,7 +75,7 @@ for i, ((s, e), sc) in enumerate(zip(bounds, scenes)):
     dur = round((lead + speech + tail) * FPS) / FPS
     durations.append(dur)
     seg = f"{out}/vo_{i+1:02d}.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s:.3f}", "-to", f"{e:.3f}", "-i", vo,
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s:.3f}", "-to", f"{e:.3f}", "-i", srcs[i],
                     "-af", f"rubberband=tempo={TEMPO}:pitchq=quality,afade=t=in:d=0.02,"
                            f"areverse,afade=t=in:d=0.04,areverse,adelay={int(lead*1000)}:all=1,apad,"
                            f"atrim=0:{dur:.6f}",
