@@ -56,6 +56,6 @@ Sprechertext gesamt: ca. 190 Wörter → ca. 80–85 s. Die Szenenlängen werden
 
 ## Produktion
 
-- Video: `webex_erklaervideo.mp4` (1920×1080, 30 fps, 89,6 s, −17 LUFS)
+- Video: `webex_erklaervideo.mp4` (1920×1080, 30 fps, 89,7 s, −17 LUFS)
 - Neu bauen: `src/build.sh <arbeitsordner> [musik.mp3]` – Eingaben liegen in `assets/` (Arbeitsordner: `audio/` und `sfx/` daraus befüllen)
 - Pipeline: `prep_audio.py` (Szenenschnitt, Tempo +12 %, Cues) → `render.js` + `stage.html` (Playwright, eine MP4 pro Szene) → concat `-c copy` → `mix.py` (Stimme + Soundeffekte + optional Musik, Ducking, Loudnorm) → Ton mit `-c:v copy` anlegen
