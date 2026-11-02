@@ -56,14 +56,19 @@ mix = vo + fx
 # Musik (optional): Schleife, leise unter der Stimme, Ducking per Stimm-Hüllkurve
 if music:
     m = load(music)
-    reps = int(np.ceil(N / len(m)))
-    m = np.tile(m, reps)[:N]
+    # Musik am Ende ausrichten, damit ihr natürlicher Schluss mit dem Video endet
+    if len(m) >= N:
+        loud = np.where(np.abs(m) > 0.01 * np.abs(m).max())[0]
+        end = loud[-1] if len(loud) else len(m)          # letzter hörbarer Ton
+        off = int(np.clip(end - (N - int(0.3 * SR)), 0, len(m) - N))
+        m = m[off:off + N]
+    else: m = np.tile(m, int(np.ceil(N / len(m))))[:N]
     env = np.abs(vo)
     k = int(0.25 * SR)
     env = np.convolve(env, np.ones(k) / k, mode="same")
     duck = 1 - 0.55 * np.clip(env / (env.max() * 0.25), 0, 1)
     m = m / (np.sqrt(np.mean(m ** 2)) + 1e-9) * db(-30) * duck
-    fi, fo = int(1.0 * SR), int(2.5 * SR)
+    fi, fo = int(1.2 * SR), int(0.6 * SR)
     m[:fi] *= np.linspace(0, 1, fi); m[-fo:] *= np.linspace(1, 0, fo)
     mix = mix + m
 
@@ -73,5 +78,5 @@ tmp = out + ".raw.wav"
 subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
                 "-ac", "2", tmp], input=mix.astype(np.float32).tobytes(), check=True)
 # Lautheit auf -16 LUFS für die Wiedergabe im Meeting
-subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", str(SR), out], check=True)
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.891:level=0", "-ar", str(SR), "-c:a", "pcm_s16le", out], check=True)
 print(f"Tonspur: {N / SR:.2f}s, {count} Soundeffekte, Musik: {'ja' if music else 'nein'}")

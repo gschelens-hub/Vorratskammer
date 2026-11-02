@@ -4,6 +4,9 @@ Aufruf: python3 -I prep_audio.py <vo.mp3> <words.json> <outdir> [N=ersatz.mp3,er
   Optional ersetzt N=… die Szene N durch eine separat vertonte Aufnahme.
 """
 import json, subprocess, sys, re, os
+import numpy as np
+
+SR = 48000
 
 FPS = 30
 TEMPO = 1.12          # Sprechtempo-Faktor (Rubberband, Tonhöhe bleibt)
@@ -75,11 +78,19 @@ for i, ((s, e), sc) in enumerate(zip(bounds, scenes)):
     dur = round((lead + speech + tail) * FPS) / FPS
     durations.append(dur)
     seg = f"{out}/vo_{i+1:02d}.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s:.3f}", "-to", f"{e:.3f}", "-i", srcs[i],
-                    "-af", f"rubberband=tempo={TEMPO}:pitchq=quality,afade=t=in:d=0.02,"
-                           f"areverse,afade=t=in:d=0.04,areverse,adelay={int(lead*1000)}:all=1,apad,"
-                           f"atrim=0:{dur:.6f}",
-                    "-ar", "48000", "-ac", "1", seg], check=True)
+    # Ausschneiden + Tempo per ffmpeg; Vorlauf und Auffüllen exakt per numpy
+    # (adelay nach rubberband greift nicht zuverlässig)
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{s:.3f}", "-to", f"{e:.3f}", "-i", srcs[i],
+                          "-af", f"rubberband=tempo={TEMPO}:pitchq=quality,afade=t=in:d=0.02,"
+                                 f"areverse,afade=t=in:d=0.04,areverse",
+                          "-ar", str(SR), "-ac", "1", "-f", "f32le", "-"], capture_output=True, check=True).stdout
+    sp = np.frombuffer(raw, dtype=np.float32)
+    n = int(round(dur * SR))
+    buf = np.zeros(n, dtype=np.float32)
+    k0 = int(round(lead * SR)); m = min(len(sp), n - k0)
+    buf[k0:k0 + m] = sp[:m]
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", seg],
+                   input=buf.tobytes(), check=True)
     cues.append({
         "scene": i + 1, "duration": dur,
         "words": [{"t": w["text"], "s": round(lead + (w["start"] - s) / TEMPO, 3),

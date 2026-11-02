@@ -51,7 +51,7 @@ Sprechertext gesamt: ca. 190 Wörter → ca. 80–85 s. Die Szenenlängen werden
 
 1. Aussprache „Skipi“: „Skippi“
 2. Abschlusstafel: „Ab sofort: Kurz & intern → Webex-Space. Beschlüsse & Revisionsrelevantes → Mail.“ (ohne Datum)
-3. Musik: gewünscht – folgt, sobald der volle ElevenLabs-Connector verbunden ist; bis dahin nur Soundeffekte
+3. Musik: ElevenLabs Music v2.5, instrumental (`assets/audio/music.mp3`), leise unter der Stimme mit Ducking; Schlussakkord auf das Videoende gelegt
 4. Stimme: Monika (ElevenLabs, `eleven_v4`)
 
 ## Produktion
