@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1d2025"/>
+  <!-- chairs -->
+  <g fill="#3a3f47">
+    <circle cx="361" cy="92" r="30"/><path d="M325 84a38 38 0 0 1 72 0" fill="none" stroke="#3a3f47" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="151" cy="420" r="30"/><path d="M115 428a38 38 0 0 0 72 0" fill="none" stroke="#3a3f47" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="361" cy="420" r="30"/><path d="M325 428a38 38 0 0 0 72 0" fill="none" stroke="#3a3f47" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <!-- desks in status colours -->
+  <rect x="266" y="140" width="190" height="104" rx="14" fill="#2fa84f"/>
+  <rect x="56" y="268" width="190" height="104" rx="14" fill="#e8b923"/>
+  <rect x="266" y="268" width="190" height="104" rx="14" fill="#d64541"/>
+  <g fill="#000" fill-opacity=".22">
+    <rect x="311" y="220" width="100" height="8" rx="4"/>
+    <rect x="101" y="284" width="100" height="8" rx="4"/>
+    <rect x="311" y="284" width="100" height="8" rx="4"/>
+  </g>
+  <text x="151" y="232" text-anchor="middle" font-family="Inter Display" font-weight="900" font-size="104" letter-spacing="-4" fill="#fff">552</text>
+</svg>
