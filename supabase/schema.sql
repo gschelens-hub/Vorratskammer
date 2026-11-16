@@ -1,66 +1,94 @@
--- 552 – Supabase schema. Run once in the Supabase SQL editor.
--- All access goes through the Cloudflare Worker with the service role key.
--- RLS is enabled without policies, so the public anon key cannot read or write anything.
+-- 552 – Supabase-Schema
+-- Einmal im Supabase SQL-Editor ausführen (kann gefahrlos erneut ausgeführt werden).
+-- Alle Tabellen beginnen mit z552_ und vertragen sich daher mit anderen Apps im selben Projekt.
+-- Zugriff wie beim Abwesenheitsplaner: über den Anon-Key; der Raumcode trennt die Räume.
 
-create table if not exists plans (
-  id uuid primary key default gen_random_uuid(),
-  person text not null check (person in ('julia', 'marc', 'luca')),
-  kind text not null check (kind in ('absence', 'single', 'recurring')),
-  status text not null check (status in ('office', 'mobile', 'away')),
-  note text not null default '',
-  start_date date not null,
-  end_date date,
-  repeat text check (repeat in ('weekly', 'monthly_nth')),
-  weekday smallint check (weekday between 0 and 6),   -- 0 = Monday
-  "interval" smallint default 1,                       -- weekly: every n weeks
-  nth smallint,                                        -- monthly_nth: 1..4, -1 = last
-  created_at timestamptz not null default now()
+create table if not exists z552_rooms (
+  code        text primary key,                 -- z. B. BUERO-5521
+  name        text not null default 'Zimmer 552',
+  created_at  timestamptz not null default now()
 );
 
-create table if not exists overrides (
-  person text not null check (person in ('julia', 'marc', 'luca')),
-  date date not null,
-  status text check (status in ('office', 'mobile', 'away')),
-  note text,
-  updated_at timestamptz not null default now(),
-  primary key (person, date)
+create table if not exists z552_members (
+  id          text primary key,                 -- vom Gerät erzeugt, z. B. m_k3j9x2
+  room_id     text not null references z552_rooms(code) on delete cascade,
+  name        text not null check (char_length(name) between 1 and 20),
+  desk        text check (desk in ('top', 'bottom_left', 'bottom_right')),
+  created_at  timestamptz not null default now(),
+  last_seen   timestamptz
+);
+create index if not exists z552_members_room on z552_members(room_id);
+
+create table if not exists z552_plans (
+  id          uuid primary key default gen_random_uuid(),
+  room_id     text not null references z552_rooms(code) on delete cascade,
+  member_id   text not null references z552_members(id) on delete cascade,
+  kind        text not null check (kind in ('absence', 'single', 'recurring')),
+  status      text not null check (status in ('office', 'mobile', 'away')),
+  note        text not null default '',
+  start_date  date not null,
+  end_date    date,
+  repeat      text check (repeat in ('weekly', 'monthly_nth')),
+  weekday     smallint check (weekday between 0 and 6),   -- 0 = Montag
+  "interval"  smallint default 1,                          -- wöchentlich: alle n Wochen
+  nth         smallint,                                    -- monatlich: 1..4, -1 = letzter
+  created_at  timestamptz not null default now()
+);
+create index if not exists z552_plans_room on z552_plans(room_id);
+
+create table if not exists z552_overrides (
+  room_id     text not null references z552_rooms(code) on delete cascade,
+  member_id   text not null references z552_members(id) on delete cascade,
+  date        date not null,
+  status      text check (status in ('office', 'mobile', 'away')),
+  note        text,
+  updated_at  timestamptz not null default now(),
+  primary key (member_id, date)
+);
+create index if not exists z552_overrides_room_date on z552_overrides(room_id, date);
+
+create table if not exists z552_guests (
+  room_id     text not null references z552_rooms(code) on delete cascade,
+  date        date not null,
+  desk        text not null check (desk in ('top', 'bottom_left', 'bottom_right')),
+  guest_name  text not null check (char_length(guest_name) between 1 and 40),
+  booked_by   text not null default '',
+  created_at  timestamptz not null default now(),
+  primary key (room_id, date, desk)
 );
 
-create table if not exists guests (
-  date date not null,
-  desk text not null check (desk in ('julia', 'marc', 'luca')),
-  guest_name text not null,
-  booked_by text not null default '',
-  created_at timestamptz not null default now(),
-  primary key (date, desk)
+create table if not exists z552_board (
+  id          uuid primary key default gen_random_uuid(),
+  room_id     text not null references z552_rooms(code) on delete cascade,
+  text        text not null check (char_length(text) between 1 and 140),
+  color       text not null default 'yellow',
+  author_id   text,
+  author_name text not null default '',
+  created_at  timestamptz not null default now()
 );
+create index if not exists z552_board_room on z552_board(room_id);
 
-create table if not exists board_notes (
-  id uuid primary key default gen_random_uuid(),
-  text text not null check (char_length(text) <= 140),
-  author text not null default '',
-  color text not null default 'yellow',
-  created_at timestamptz not null default now()
-);
+-- Zeilenschutz: Zugriff mit dem Anon-Key erlauben (wie beim Abwesenheitsplaner).
+do $$
+declare t text;
+begin
+  foreach t in array array['z552_rooms','z552_members','z552_plans','z552_overrides','z552_guests','z552_board'] loop
+    execute format('alter table %I enable row level security', t);
+    execute format('drop policy if exists "anon_all" on %I', t);
+    execute format('create policy "anon_all" on %I for all to anon, authenticated using (true) with check (true)', t);
+  end loop;
+end $$;
 
-create table if not exists push_subscriptions (
-  endpoint text primary key,
-  person text not null check (person in ('julia', 'marc', 'luca')),
-  p256dh text not null,
-  auth text not null,
-  created_at timestamptz not null default now()
-);
-
--- Used by the keep-alive cron job.
-create table if not exists heartbeat (
-  id smallint primary key default 1,
-  beat_at timestamptz not null default now()
-);
-insert into heartbeat (id) values (1) on conflict do nothing;
-
-alter table plans enable row level security;
-alter table overrides enable row level security;
-alter table guests enable row level security;
-alter table board_notes enable row level security;
-alter table push_subscriptions enable row level security;
-alter table heartbeat enable row level security;
+-- Live-Aktualisierung (Realtime) für alle Tabellen eines Raums.
+do $$
+declare t text;
+begin
+  foreach t in array array['z552_members','z552_plans','z552_overrides','z552_guests','z552_board'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table %I', t);
+    end if;
+  end loop;
+end $$;

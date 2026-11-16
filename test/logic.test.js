@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isoWeek, mondayOf, weekday } from '../src/shared/dates.js';
-import { holidayName, isBridgeDay } from '../src/shared/holidays.js';
-import { resolveDay } from '../src/shared/resolve.js';
+import { holidayName, isBridgeDay, isoWeek, mondayOf, resolveDay, weekday } from '../app/logic.js';
 
 test('dates', () => {
   assert.equal(weekday('2026-11-16'), 0);
@@ -20,14 +18,14 @@ test('Berlin holidays and bridge days', () => {
 });
 
 const plans = [
-  { id: 'a', person: 'marc', kind: 'absence', status: 'away', note: 'Urlaub', start_date: '2026-12-01', end_date: '2026-12-05', created_at: '1' },
-  { id: 'b', person: 'luca', kind: 'recurring', status: 'mobile', note: '', start_date: '2026-11-02', repeat: 'weekly', weekday: 4, interval: 2, created_at: '1' },
-  { id: 'c', person: 'julia', kind: 'recurring', status: 'away', note: '', start_date: '2026-01-01', repeat: 'monthly_nth', weekday: 1, nth: 2, created_at: '1' },
-  { id: 'd', person: 'julia', kind: 'recurring', status: 'mobile', note: '', start_date: '2026-01-01', repeat: 'monthly_nth', weekday: 4, nth: -1, created_at: '1' },
+  { id: 'a', member_id: 'marc', kind: 'absence', status: 'away', note: 'Urlaub', start_date: '2026-12-01', end_date: '2026-12-05', created_at: '1' },
+  { id: 'b', member_id: 'luca', kind: 'recurring', status: 'mobile', note: '', start_date: '2026-11-02', repeat: 'weekly', weekday: 4, interval: 2, created_at: '1' },
+  { id: 'c', member_id: 'julia', kind: 'recurring', status: 'away', note: '', start_date: '2026-01-01', repeat: 'monthly_nth', weekday: 1, nth: 2, created_at: '1' },
+  { id: 'd', member_id: 'julia', kind: 'recurring', status: 'mobile', note: '', start_date: '2026-01-01', repeat: 'monthly_nth', weekday: 4, nth: -1, created_at: '1' },
 ];
 
 test('override wins for one day only', () => {
-  const overrides = [{ person: 'marc', date: '2026-12-03', status: 'office', note: null }];
+  const overrides = [{ member_id: 'marc', date: '2026-12-03', status: 'office', note: null }];
   assert.equal(resolveDay('marc', '2026-12-02', plans, overrides).status, 'away');
   const d3 = resolveDay('marc', '2026-12-03', plans, overrides);
   assert.equal(d3.status, 'office');
@@ -36,7 +34,7 @@ test('override wins for one day only', () => {
 });
 
 test('note-only override keeps planned status', () => {
-  const r = resolveDay('marc', '2026-12-02', plans, [{ person: 'marc', date: '2026-12-02', status: null, note: 'Paket' }]);
+  const r = resolveDay('marc', '2026-12-02', plans, [{ member_id: 'marc', date: '2026-12-02', status: null, note: 'Paket' }]);
   assert.equal(r.status, 'away');
   assert.equal(r.note, 'Paket');
 });

@@ -1,50 +1,39 @@
 # 552 – Zimmer-App
 
-Wer sitzt heute in Zimmer 552? Grundriss mit den drei Tischen (Julia oben, Marc unten links, Luca unten rechts), Wochenleiste im Wandkalender-Stil mit rotem Schieberegler, Planung für Urlaub und Turnustermine.
+Wer sitzt heute in Zimmer 552? Grundriss mit drei Tischen, Wochenleiste im Wandkalender-Stil mit rotem Schieberegler, Planung für Urlaub und Turnustermine, Pinnwand, Wochenüberblick und Gastplatz.
 
-**Ausprobieren ohne Backend:** `npm install && npm run dev`, dann `http://localhost:5173/?demo` öffnen. Im Demo-Modus liegen die Daten nur im Browser.
+Aufbau wie beim Abwesenheitsplaner: eine statische App (kein Build-Schritt), Supabase direkt aus dem Browser mit dem Anon-Key, Räume über einen Raumcode.
+
+## Deploy
+
+1. **Supabase**: `supabase/schema.sql` im SQL-Editor ausführen (einmalig; erneutes Ausführen schadet nicht).
+2. **ZIP bauen**: `./scripts/make-zip.sh` → `552.zip` (ein fertiges ZIP liegt auch im Repo).
+3. **Cloudflare**: Pages → Projekt → neue Bereitstellung → `552.zip` hochladen.
+
+Supabase-Verbindung: `app/config.js`. Vorbelegt ist dasselbe Projekt wie beim Abwesenheitsplaner. Die Tabellen heißen `z552_*` und stören dort nichts, und der vorhandene Cron gegen die Pausierung hält damit auch 552 wach. Für ein eigenes Projekt URL und Anon-Key dort ersetzen und dafür einen eigenen Keep-alive-Cron einrichten.
+
+**Neue Version**: in `app/sw.js` `CACHE` hochzählen (`552-v2` …) und `app/version.txt` anpassen. Dann zeigt die App „Neue Version verfügbar“.
+
+## Räume und Benutzer
+
+- **Erster Start**: „Neuen Raum erstellen“ legt einen Raum mit Code an (z. B. `KAFFEE-4821`) und darin Julia (oben), Marc (unten links) und Luca (unten rechts). Die anderen geben auf ihrem Gerät den Raumcode ein.
+- **Wer bist du?** Danach wählt man sich einmal aus. Das Gerät merkt sich Raum und Person, z. B. für Pinnwand-Einträge. Mit „Ich bin neu hier“ legt man sich selbst an.
+- **Einstellungen** (Klick auf den eigenen Namen): Raumcode teilen, Person wechseln, Mitglieder umbenennen, hinzufügen, entfernen und Tische zuordnen, Raum verlassen.
+- Wie beim Abwesenheitsplaner ist der Raumcode der Schlüssel: Wer ihn kennt, kann mitmachen.
 
 ## Funktionen
 
-- **Zimmer**: Status pro Tag (grün = im Büro, gelb = mobil, rot = nicht da, grau = offen) und eine kurze Notiz, die als Sprechblase am Tisch steht. Ein Klick auf der Hauptseite überschreibt die Planung nur für diesen einen Tag; „Auf Planung zurücksetzen“ nimmt das zurück.
+- **Zimmer**: Status pro Tag (grün = im Büro, gelb = mobil, rot = nicht da, grau = offen) und eine kurze Notiz als Sprechblase am Tisch. Eine Änderung hier gilt nur für diesen einen Tag; „Auf Planung zurücksetzen“ nimmt sie zurück.
 - **Planung**: Urlaub/Abwesenheit (von–bis), Einzeltermine und Turnus (wöchentlich bzw. alle n Wochen, oder der n-te/letzte Wochentag im Monat).
 - **Vorrang**: Tagesänderung › Urlaub/Einzeltermin › Turnus › Feiertag › offen.
-- **Morgen-Erinnerung**: werktags um 8:30 Uhr eine Push-Mitteilung „Bist du heute im Büro?“ mit Antwort-Knöpfen. Sie kommt nur, wenn für den Tag noch nichts eingetragen oder geplant ist. Auf dem iPhone muss die App dafür zum Home-Bildschirm hinzugefügt sein.
-- **Pinnwand**: Notizen fürs ganze Zimmer, auf der freien Fläche im Grundriss bzw. auf dem Handy unter dem Bild.
-- **Feiertage & Brückentage** (Berlin): erscheinen in der Wochenleiste, dazu ein Hinweis, wer an einem Brückentag noch keinen Urlaub geplant hat.
-- **Wochenüberblick**: wer an welchem Tag da ist und wie oft alle drei im Büro sind.
-- **Gastplatz**: Ist ein Tisch frei (mobil oder nicht da), kann er für einen Gast reserviert werden.
+- **Pinnwand**, **Feiertage & Brückentage** (Berlin, plus 24.12./31.12.), **Wochenüberblick**, **Gastplatz** auf freien Tischen.
+- **Live**: Änderungen der anderen erscheinen sofort (Supabase Realtime).
+- **Demo ohne Datenbank**: `index.html?demo`.
 
-## Aufbau
+Später geplant: Morgen-Erinnerung per Push. Der Service Worker (`app/sw.js`) ist dafür schon vorhanden.
 
-| Teil | Technik |
-| --- | --- |
-| Frontend | Vite, reines JavaScript, als PWA installierbar (`index.html`, `src/`) |
-| Backend | Cloudflare Worker (`worker/`), liefert auch die statischen Dateien aus |
-| Daten | Supabase (Postgres), nur der Worker greift mit dem Service-Key zu |
-| Cron | `wrangler.toml`: täglicher Keep-alive gegen die Supabase-Pausierung, Erinnerung um 8:30 Uhr Berliner Zeit |
+## Entwicklung
 
-Zugriffsschutz: Eine gemeinsame Raum-PIN wird bei jeder API-Anfrage geprüft. In Supabase ist RLS ohne Policies aktiv, der öffentliche Anon-Key kann also nichts lesen.
-
-## Einrichtung
-
-1. **Supabase**: Projekt anlegen und `supabase/schema.sql` im SQL-Editor ausführen.
-2. **VAPID-Schlüssel** für Push erzeugen: `npm run vapid`
-3. **wrangler.toml** ausfüllen: `SUPABASE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` (eine mailto-Adresse).
-4. **Secrets** setzen:
-   ```sh
-   npx wrangler secret put SUPABASE_SERVICE_KEY
-   npx wrangler secret put ROOM_PIN
-   npx wrangler secret put VAPID_PRIVATE_KEY
-   ```
-5. **Deploy**: `npm run deploy`
-
-Lokal mit Backend: dieselben Werte in eine Datei `.dev.vars` schreiben, `npm run build && npx wrangler dev --test-scheduled`. Die Cron-Jobs lassen sich dann über `curl "localhost:8787/cdn-cgi/handler/scheduled?cron=17+3+*+*+*"` auslösen.
-
-## Tests
-
-`npm test` prüft die Vorrangregeln, Turnusregeln, Feiertage/Brückentage und die Web-Push-Verschlüsselung.
-
-## Bild
-
-`design/buero-552.png` ist das Original. Die App nutzt `public/buero-552.webp`, auf den Raum zugeschnitten und verkleinert. Die Tischpositionen stehen in `src/shared/resolve.js` (Prozent der Bildgröße).
+- Lokal starten: `cd app && python3 -m http.server 8000` → `http://localhost:8000/index.html?demo`
+- Tests: `node --test test/logic.test.js`
+- Tischpositionen: `DESKS` in `app/logic.js` (Prozent der Bildgröße). Originalbild: `design/buero-552.png`.

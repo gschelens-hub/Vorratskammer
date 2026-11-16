@@ -423,13 +423,6 @@ body[data-view='plan'] #view-room {
   overflow: hidden;
   text-align: center;
 }
-.desk[data-person='julia'] .desk-note {
-  bottom: calc(100% + 1.2cqw);
-}
-.desk[data-person='marc'] .desk-note,
-.desk[data-person='luca'] .desk-note {
-  top: calc(100% + 1.2cqw);
-}
 
 /* pinboard inside the image (free floor area left of the desks) */
 .board {
@@ -931,4 +924,233 @@ legend {
   .cal-num {
     font-size: 19px;
   }
+}
+
+/* ---------- setup / login ---------- */
+#setup {
+  display: none;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+body[data-setup] #setup {
+  display: flex;
+}
+body[data-setup] #app {
+  display: none;
+}
+body[data-setup='loading'] #setup-card {
+  visibility: hidden;
+}
+.setup-card {
+  background: var(--paper);
+  border-radius: 18px;
+  box-shadow: var(--card-shadow);
+  padding: 28px 22px;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.setup-card h1 {
+  font-size: 24px;
+}
+.setup-card p {
+  margin: 0;
+}
+.brand-num.big {
+  align-self: flex-start;
+  font-size: 34px;
+  border-width: 3px;
+  border-radius: 10px;
+  padding: 0 10px;
+}
+.divider {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+.err {
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 600;
+}
+.who {
+  display: grid;
+  gap: 8px;
+}
+.who-btn {
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.who-btn:hover {
+  border-color: var(--ink);
+}
+.who-btn span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.new-me summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.new-me form {
+  margin-top: 8px;
+}
+
+/* ---------- banners ---------- */
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 600;
+}
+.banner.warn {
+  background: #9a2a1f;
+  color: #fff;
+}
+.banner button {
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: #fff;
+  color: #1f2328;
+  font-weight: 700;
+}
+
+/* ---------- top bar extras ---------- */
+.top-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.room-chip {
+  border: 1px dashed var(--line);
+  background: none;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .room-chip {
+    display: none;
+  }
+}
+
+/* desk note bubble: above or below the desk, depending on where the chair is */
+.desk[data-note-pos='above'] .desk-note {
+  bottom: calc(100% + 1.2cqw);
+}
+.desk[data-note-pos='below'] .desk-note {
+  top: calc(100% + 1.2cqw);
+}
+.desk.free {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.85);
+}
+.desk.free.has-guest {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, #3b6fd8 85%, transparent) 0 1.2cqw, color-mix(in srgb, #3b6fd8 70%, transparent) 1.2cqw 2.4cqw);
+  color: #fff;
+}
+
+.deskless {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- settings ---------- */
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.member-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+}
+.member-row input,
+.member-row select {
+  padding: 7px 9px;
+  font-size: 14px;
+}
+.member-row[data-member-add] {
+  grid-template-columns: 1fr 1fr auto;
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+@media (max-width: 480px) {
+  .member-row,
+  .member-row[data-member-add] {
+    grid-template-columns: 1fr auto auto;
+  }
+  .member-row[data-member-add] {
+    grid-template-columns: 1fr auto;
+  }
+  .member-row input {
+    grid-column: 1 / -1;
+  }
+}
+.actions.left {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+.small {
+  font-size: 12.5px;
+}
+.version {
+  text-align: right;
+  margin: 10px 0 0;
+}
+.guest-box.first {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
 }

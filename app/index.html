@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f3f1ec" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="552" />
+    <title>552</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  </head>
+  <body data-view="room" data-setup="loading">
+    <div id="ubanner" class="banner" hidden><span>Neue Version verfügbar</span><button id="update-btn">Aktualisieren</button></div>
+    <div id="dbbanner" class="banner warn" hidden><span>Keine Verbindung zur Datenbank. Änderungen werden gerade nicht gespeichert.</span><button id="db-retry">Erneut versuchen</button></div>
+
+    <div id="setup"><div id="setup-card" class="setup-card"></div></div>
+
+    <div id="app">
+      <header class="topbar">
+        <div class="brand"><span class="brand-num">552</span><span id="demo-flag" class="pill grey" hidden>Demo</span></div>
+        <nav class="tabs" role="tablist">
+          <button id="tab-room" role="tab">Zimmer</button>
+          <button id="tab-plan" role="tab">Planung</button>
+        </nav>
+        <div class="top-right">
+          <button id="room-chip" class="room-chip" title="Raumcode teilen"></button>
+          <button id="me-chip" class="me-chip" aria-label="Einstellungen">…</button>
+        </div>
+      </header>
+
+      <main>
+        <section id="view-room" class="view">
+          <div class="cal" aria-label="Woche">
+            <div class="cal-rings" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="cal-head">
+              <button id="cal-prev" class="cal-nav" aria-label="Vorige Woche">‹</button>
+              <div class="cal-title"><span id="cal-month"></span><span id="cal-kw" class="cal-kw"></span></div>
+              <button id="cal-today" class="cal-todaybtn">Heute</button>
+              <button id="cal-next" class="cal-nav" aria-label="Nächste Woche">›</button>
+            </div>
+            <div class="cal-strip">
+              <div id="cal-slider" class="cal-slider" aria-hidden="true"></div>
+              <div id="cal-days" class="cal-days" role="tablist" aria-label="Wochentage"></div>
+            </div>
+          </div>
+
+          <h1 id="day-title" class="day-title"></h1>
+
+          <div id="stage" class="stage">
+            <div class="stage-inner">
+              <img src="buero-552.webp" alt="Grundriss von Zimmer 552 mit drei Schreibtischen" width="1600" height="1120" />
+              <div id="board" class="board" aria-label="Pinnwand"></div>
+              <div id="desks"></div>
+            </div>
+          </div>
+          <div id="deskless" class="deskless" hidden></div>
+
+          <section id="board-list" class="card board-list"></section>
+          <section id="overview" class="card overview"></section>
+        </section>
+
+        <section id="view-plan" class="view">
+          <form id="plan-form" class="card plan-form"></form>
+          <section class="card">
+            <div class="list-head"><h2>Einträge</h2><div id="plan-filter" class="filter"></div></div>
+            <ul id="plan-list" class="plan-list"></ul>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="sheet" class="sheet"><div id="sheet-body"></div></dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
