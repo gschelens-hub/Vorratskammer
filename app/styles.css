@@ -1180,3 +1180,18 @@ body[data-setup='loading'] #setup-card {
   margin-top: 0;
   padding-top: 0;
 }
+
+/* logo */
+.brand-logo {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.brand-logo.big {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}

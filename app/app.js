@@ -739,7 +739,7 @@ function showSetup(step, message = '') {
   const el = $('#setup-card');
   if (step === 'room') {
     el.innerHTML = `
-      <div class="brand-num big">552</div>
+      <img src="icon-192.png" class="brand-logo big" alt="552" width="84" height="84">
       <h1>Unser Büro</h1>
       <p class="muted">Wer ist heute im Zimmer? Tritt eurem Raum mit dem Raumcode bei.</p>
       <form data-join class="stack">
@@ -788,7 +788,7 @@ function showSetup(step, message = '') {
   // step 'who'
   const members = state.data.members;
   el.innerHTML = `
-    <div class="brand-num big">552</div>
+    <img src="icon-192.png" class="brand-logo big" alt="552" width="84" height="84">
     <h1>Wer bist du?</h1>
     <p class="muted">Raum <strong>${esc(room())}</strong>. Einmal auswählen – das Gerät merkt es sich, z. B. für Pinnwand-Einträge.</p>
     <div class="who">
