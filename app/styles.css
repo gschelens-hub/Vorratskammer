@@ -1394,3 +1394,38 @@ label.btn {
     opacity: 0.9;
   }
 }
+
+/* WhatsApp group button */
+.wa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.wa-btn:hover {
+  filter: brightness(0.95);
+}
+@media (max-width: 480px) {
+  .topbar {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 6px;
+  }
+  .tabs button {
+    padding: 6px 10px;
+  }
+  .me-chip {
+    padding: 6px 10px;
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #demo-flag {
+    display: none;
+  }
+}

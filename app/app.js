@@ -872,6 +872,7 @@ async function enterRoom() {
 const SPRUECHE_DEFAULT = ['Absolute Bubensahne', 'Wohlverdient!', 'Geil gemacht!', 'Ab in die Sonne!', 'Na endlich!'];
 const CFG_DEFAULT = {
   pin: '0552',
+  whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
   features: { board: true, guests: true, overview: true, bridge: true },
   start: { on: false, title: 'Guten Morgen, Zimmer 552!', btn: "Los geht's", img: '', imgPath: '', freq: 'daily', from: '', to: '' },
@@ -917,6 +918,10 @@ function applyConfig() {
   document.body.classList.toggle('no-overview', !c.features.overview);
   document.body.classList.toggle('no-bridge', !c.features.bridge);
   document.body.classList.toggle('no-guests', !c.features.guests);
+  const wa = $('#wa-link');
+  const okLink = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/.test(c.whatsapp || '');
+  wa.hidden = !okLink;
+  if (okLink) wa.href = c.whatsapp;
 }
 const feature = (name) => state.cfg.features[name] !== false;
 
@@ -1019,6 +1024,11 @@ function renderDev() {
         ${check('d_f_guests', d.features.guests, 'Gastplatz')}
         ${check('d_f_overview', d.features.overview, 'Wochenüberblick')}
         ${check('d_f_bridge', d.features.bridge, 'Brückentag-Hinweise')}
+      </section>
+      <section class="dev-sec">
+        <h3>WhatsApp-Gruppe</h3>
+        <label>Einladungslink der Gruppe<input id="d_whatsapp" value="${esc(d.whatsapp)}" placeholder="https://chat.whatsapp.com/…" inputmode="url" autocomplete="off"></label>
+        <p class="muted small">In WhatsApp: Gruppe öffnen → Gruppenname antippen → „Per Link einladen“ → Link kopieren. Ist ein Link eingetragen, erscheint oben in der App ein WhatsApp-Knopf.</p>
       </section>
       <section class="dev-sec">
         <h3>Zugang</h3>
@@ -1133,6 +1143,7 @@ function devCollect() {
     bridge: v('d_f_bridge').checked,
   };
   DRAFT.pin = v('d_pin').value.trim() || '0552';
+  DRAFT.whatsapp = v('d_whatsapp').value.trim();
 }
 
 async function devUpload(input) {
@@ -1156,6 +1167,9 @@ async function devUpload(input) {
 
 async function devSave() {
   devCollect();
+  if (DRAFT.whatsapp && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/.test(DRAFT.whatsapp)) {
+    return toast('Der WhatsApp-Link muss mit https://chat.whatsapp.com/ beginnen.');
+  }
   DRAFT.vac.sprueche = DRAFT.vac.sprueche.map((s) => s.trim()).filter(Boolean);
   DRAFT.start.rev = Date.now(); // "nur einmal" zeigt den Störer nach jeder Änderung wieder
   try {
