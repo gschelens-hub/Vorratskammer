@@ -1,4 +1,5 @@
 // 552 – Zimmer-App
+import { BASKET, basketSvg, DOGS, dogPreviewSvg } from './dogs.js';
 import { db, DbError, isDemo, LS, newMemberId, newRoomCode } from './data.js';
 import {
   addDays,
@@ -30,7 +31,7 @@ const state = {
   today: today0,
   weekStart: mondayOf(firstWorkday(today0)),
   selected: firstWorkday(today0),
-  data: { members: [], plans: [], overrides: [], guests: [], board: [] },
+  data: { members: [], plans: [], overrides: [], guests: [], board: [], dogs: [] },
   sheetOpen: false,
   editPlanId: null,
   unsubscribe: null,
@@ -199,6 +200,8 @@ function renderRoom() {
       </button>`;
   }).join('');
 
+  renderBasket();
+
   // members without a desk
   const deskless = state.data.members.filter((m) => !m.desk);
   $('#deskless').hidden = !deskless.length;
@@ -211,6 +214,65 @@ function renderRoom() {
         })
         .join('')
     : '';
+}
+
+// ---------- dog basket ----------
+let basketKey = null;
+const dogOn = (iso) => (state.data.dogs || []).find((d) => d.date === iso)?.dog || null;
+function renderBasket() {
+  const el = $('#basket');
+  const on = state.cfg?.features?.dogs === true;
+  el.hidden = !on;
+  if (!on) return;
+  const dog = dogOn(state.selected);
+  el.setAttribute('aria-label', dog ? `Im Körbchen: ${DOGS[dog].name}` : 'Hundekörbchen – leer');
+  el.title = dog ? `${DOGS[dog].name} (${DOGS[dog].breed})` : 'Hundekörbchen';
+  const key = String(dog);
+  if (key === basketKey) return; // keep running animations, only redraw when the dog changes
+  basketKey = key;
+  el.innerHTML = basketSvg(dog) + (dog ? `<span class="basket-name">${DOGS[dog].name}</span>` : '<span class="basket-name empty">Wer kommt?</span>');
+}
+
+function hearts() {
+  const el = $('#basket');
+  for (let i = 0; i < 6; i++) {
+    const h = document.createElement('span');
+    h.className = 'heart';
+    h.textContent = '❤';
+    h.style.left = 30 + Math.random() * 40 + '%';
+    h.style.animationDelay = i * 0.12 + 's';
+    h.style.setProperty('--dx', (Math.random() * 2 - 1) * 30 + 'px');
+    el.appendChild(h);
+    setTimeout(() => h.remove(), 2200);
+  }
+}
+
+function openBasket() {
+  const iso = state.selected;
+  const current = dogOn(iso);
+  openSheet(
+    `<header class="sheet-head"><h2>Wer liegt im Körbchen?</h2><p>${WEEKDAYS_LONG[weekday(iso)]}, ${formatShort(iso)}${iso.slice(0, 4)}</p></header>
+     <div class="dog-pick">
+       ${Object.entries(DOGS)
+         .map(
+           ([id, d]) => `<button type="button" class="dog-opt${current === id ? ' on' : ''}" data-dog="${id}">
+             ${dogPreviewSvg(id)}<strong>${d.name}</strong><span>${d.breed}</span></button>`,
+         )
+         .join('')}
+     </div>
+     <button type="button" class="btn ghost wide-btn" data-dog="">Körbchen bleibt leer</button>`,
+    (root) => {
+      root.querySelectorAll('[data-dog]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          const dog = b.dataset.dog || null;
+          closeSheet();
+          if (dog === current) return;
+          const ok = await mutate(() => db.setDog(room(), iso, dog));
+          if (ok && dog) setTimeout(hearts, 350);
+        }),
+      );
+    },
+  );
 }
 
 const NOTE_COLORS = { yellow: '#fff3a8', pink: '#ffd1dc', blue: '#cfe8ff', green: '#d4f5c9' };
@@ -254,6 +316,12 @@ function renderFurniture() {
     return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" class="f-desk" filter="url(#deskShadow)"/>${monitor}`;
   };
   $('#furniture').setAttribute('viewBox', `${PLAN.x} ${PLAN.y} ${PLAN.w} ${PLAN.h}`);
+  Object.assign($('#basket').style, {
+    left: `${((BASKET.x - PLAN.x) / PLAN.w) * 100}%`,
+    top: `${((BASKET.y - PLAN.y) / PLAN.h) * 100}%`,
+    width: `${(BASKET.w / PLAN.w) * 100}%`,
+    height: `${(BASKET.h / PLAN.h) * 100}%`,
+  });
   $('#furniture').innerHTML = `<defs>
       <radialGradient id="seat" cx="45%" cy="40%" r="65%"><stop offset="0" class="f-seat-hi"/><stop offset="1" class="f-seat-lo"/></radialGradient>
       <filter id="deskShadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".16"/></filter>
@@ -763,7 +831,7 @@ function leaveRoom() {
   state.unsubscribe = null;
   state.session = null;
   saveSession();
-  state.data = { members: [], plans: [], overrides: [], guests: [], board: [] };
+  state.data = { members: [], plans: [], overrides: [], guests: [], board: [], dogs: [] };
   closeSheet();
   showSetup('room');
 }
@@ -909,7 +977,7 @@ const CFG_DEFAULT = {
   kreditnext: { on: true, label: 'KreditNext', members: [] }, // members [] = everyone named Julia
   whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
-  features: { board: true, guests: true, overview: true, bridge: true },
+  features: { board: true, guests: true, overview: true, bridge: true, dogs: false },
   start: { on: false, title: 'Guten Morgen, Zimmer 552!', btn: "Los geht's", img: '', imgPath: '', freq: 'daily', from: '', to: '' },
   vac: { on: false, title: 'Urlaub ist eingetragen!', btn: 'Geil!', img: '', imgPath: '', random: false, sprueche: SPRUECHE_DEFAULT.slice(), konfetti: true },
 };
@@ -954,6 +1022,7 @@ function applyConfig() {
   document.body.classList.toggle('no-overview', !c.features.overview);
   document.body.classList.toggle('no-bridge', !c.features.bridge);
   document.body.classList.toggle('no-guests', !c.features.guests);
+  if (document.getElementById('basket')) renderBasket();
   const wa = $('#wa-link');
   const okLink = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/.test(c.whatsapp || '');
   wa.hidden = !okLink;
@@ -1060,6 +1129,7 @@ function renderDev() {
         ${check('d_f_guests', d.features.guests, 'Gastplatz')}
         ${check('d_f_overview', d.features.overview, 'Wochenüberblick')}
         ${check('d_f_bridge', d.features.bridge, 'Brückentag-Hinweise')}
+        ${check('d_f_dogs', d.features.dogs, 'Hundekörbchen neben Julia (Hazel & Koko)')}
       </section>
       <section class="dev-sec">
         <h3>Zusatz-Status (Tisch grün/rot gestreift)</h3>
@@ -1190,6 +1260,7 @@ function devCollect() {
     guests: v('d_f_guests').checked,
     overview: v('d_f_overview').checked,
     bridge: v('d_f_bridge').checked,
+    dogs: v('d_f_dogs').checked,
   };
   DRAFT.pin = v('d_pin').value.trim() || '0552';
   DRAFT.whatsapp = v('d_whatsapp').value.trim();
@@ -1443,6 +1514,7 @@ function bind() {
   $('#tab-room').addEventListener('click', () => setView('room'));
   $('#tab-plan').addEventListener('click', () => setView('plan'));
   $('#me-chip').addEventListener('click', openSettings);
+  $('#basket').addEventListener('click', openBasket);
   $('#app .brand-logo').addEventListener('click', onLogoTap);
   $('#room-chip').addEventListener('click', shareRoom);
   $('#cal-prev').addEventListener('click', () => shiftWeek(-1));

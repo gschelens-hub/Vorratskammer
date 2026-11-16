@@ -1579,3 +1579,234 @@ main {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 120px 0 0 var(--paper);
   }
 }
+
+/* ---------- dog basket ---------- */
+.basket {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.basket:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 4px;
+  border-radius: 20px;
+}
+.basket-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.basket-name {
+  position: absolute;
+  left: 50%;
+  bottom: -2%;
+  transform: translateX(-50%);
+  font-size: clamp(10px, 2cqw, 15px);
+  font-weight: 800;
+  color: #fff;
+  background: #6e421d;
+  border-radius: 999px;
+  padding: 1px 10px 2px;
+  white-space: nowrap;
+}
+.basket-name.empty {
+  background: var(--paper);
+  color: var(--muted);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.basket-svg * {
+  transform-box: fill-box;
+}
+.basket-svg.has-dog .dog-in {
+  animation: hop-in 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  transform-origin: 50% 100%;
+}
+@keyframes hop-in {
+  from {
+    transform: translateY(40%) scale(0.9);
+    opacity: 0;
+  }
+}
+.dog .body {
+  transform-origin: 50% 100%;
+  animation: breathe 3.2s ease-in-out infinite;
+}
+.dog .eyes {
+  transform-origin: 50% 50%;
+  animation: blink 5s infinite;
+}
+.dog .tail {
+  transform-origin: 0% 100%;
+  animation: wag 0.45s ease-in-out infinite alternate;
+}
+.dog-koko .tail {
+  animation-duration: 0.8s;
+}
+.dog-koko .head {
+  transform-origin: 50% 90%;
+  animation: tilt 6s ease-in-out infinite;
+}
+.dog-koko .ear {
+  transform-origin: 50% 0%;
+  animation: ear-swing 6s ease-in-out infinite;
+}
+.dog-hazel .tongue {
+  transform-origin: 50% 0%;
+  animation: pant 0.32s ease-in-out infinite alternate;
+}
+.dog-hazel .head {
+  transform-origin: 50% 90%;
+  animation: look 7s ease-in-out infinite;
+}
+.dog-hazel .ear-l {
+  transform-origin: 80% 10%;
+  animation: twitch 4s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    transform: scale(1.025, 1.05);
+  }
+}
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes wag {
+  from {
+    transform: rotate(-14deg);
+  }
+  to {
+    transform: rotate(16deg);
+  }
+}
+@keyframes tilt {
+  0%,
+  50%,
+  100% {
+    transform: rotate(0);
+  }
+  62%,
+  82% {
+    transform: rotate(-13deg);
+  }
+}
+@keyframes ear-swing {
+  0%,
+  50%,
+  100% {
+    transform: rotate(0);
+  }
+  64% {
+    transform: rotate(6deg);
+  }
+  74% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes pant {
+  to {
+    transform: scaleY(1.3);
+  }
+}
+@keyframes look {
+  0%,
+  40%,
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+  50%,
+  60% {
+    transform: rotate(6deg) translateY(-2px);
+  }
+  70% {
+    transform: rotate(-4deg);
+  }
+}
+@keyframes twitch {
+  0%,
+  86%,
+  100% {
+    transform: rotate(0);
+  }
+  90% {
+    transform: rotate(-14deg);
+  }
+  94% {
+    transform: rotate(4deg);
+  }
+}
+.heart {
+  position: absolute;
+  top: 20%;
+  color: #e5372a;
+  font-size: clamp(14px, 3cqw, 26px);
+  pointer-events: none;
+  animation: heart-up 1.8s ease-out forwards;
+}
+@keyframes heart-up {
+  from {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.3), -10px) scale(1.1);
+  }
+  to {
+    transform: translate(var(--dx), -90px) scale(0.9);
+    opacity: 0;
+  }
+}
+.dog-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dog-opt {
+  border: 2px solid var(--line);
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 10px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.dog-opt.on {
+  border-color: #6e421d;
+  background: color-mix(in srgb, #c0733b 12%, var(--paper));
+}
+.dog-opt strong {
+  font-size: 17px;
+}
+.dog-opt span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dog-preview {
+  width: 100%;
+  max-width: 130px;
+  height: auto;
+}
+.dog-preview * {
+  transform-box: fill-box;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dog *,
+  .dog-in,
+  .heart {
+    animation: none !important;
+  }
+}

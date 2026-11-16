@@ -72,14 +72,18 @@ const live = {
 
   async load(room, from, to) {
     const db = sb();
-    const [members, plans, overrides, guests, board] = await Promise.all([
+    // dogs: tolerant, so the app still works before update-v5.sql has been run
+    const dogsQuery = db.from('z552_dogs').select('*').eq('room_id', room).gte('date', from).lte('date', to)
+      .then(({ data, error }) => (error ? [] : data || []));
+    const [members, plans, overrides, guests, board, dogs] = await Promise.all([
       q(db.from('z552_members').select('*').eq('room_id', room).order('created_at')),
       q(db.from('z552_plans').select('*').eq('room_id', room).order('start_date')),
       q(db.from('z552_overrides').select('*').eq('room_id', room).gte('date', from).lte('date', to)),
       q(db.from('z552_guests').select('*').eq('room_id', room).gte('date', from).lte('date', to)),
       q(db.from('z552_board').select('*').eq('room_id', room).order('created_at')),
+      dogsQuery,
     ]);
-    return { members, plans, overrides, guests, board };
+    return { members, plans, overrides, guests, board, dogs };
   },
 
   setOverride: (room, row) =>
@@ -97,6 +101,10 @@ const live = {
   addNote: (room, note) => q(sb().from('z552_board').insert({ ...note, room_id: room })),
   deleteNote: (room, id) => q(sb().from('z552_board').delete().eq('id', id).eq('room_id', room)),
 
+  setDog(room, date, dog) {
+    if (!dog) return q(sb().from('z552_dogs').delete().eq('room_id', room).eq('date', date));
+    return q(sb().from('z552_dogs').upsert({ room_id: room, date, dog, updated_at: new Date().toISOString() }, { onConflict: 'room_id,date' }));
+  },
   async getConfig(room) {
     const rows = await q(sb().from('z552_roomconfig').select('config').eq('room_id', room).limit(1));
     return rows[0]?.config || null;
@@ -120,7 +128,7 @@ const live = {
   subscribe(room, onChange) {
     const db = sb();
     const ch = db.channel('z552:' + room);
-    for (const table of ['z552_members', 'z552_plans', 'z552_overrides', 'z552_guests', 'z552_board', 'z552_roomconfig']) {
+    for (const table of ['z552_members', 'z552_plans', 'z552_overrides', 'z552_guests', 'z552_board', 'z552_roomconfig', 'z552_dogs']) {
       ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table, filter: `room_id=eq.${room}` }, () => onChange(table));
       ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter: `room_id=eq.${room}` }, () => onChange(table));
       // Supabase cannot filter DELETE events, so listen to all and simply reload.
@@ -211,6 +219,7 @@ const demo = {
       overrides: d.overrides.filter(inRange),
       guests: d.guests.filter(inRange),
       board: d.board.filter(r),
+      dogs: (d.dogs || []).filter(inRange),
     };
   },
   setOverride: async (room, row) =>
@@ -236,6 +245,11 @@ const demo = {
   addNote: async (room, note) =>
     demoMutate((d) => d.board.push({ ...note, id: uid(), room_id: room, created_at: new Date().toISOString() })),
   deleteNote: async (room, id) => demoMutate((d) => (d.board = d.board.filter((n) => n.id !== id))),
+  setDog: async (room, date, dog) =>
+    demoMutate((d) => {
+      d.dogs = (d.dogs || []).filter((x) => !(x.room_id === room && x.date === date));
+      if (dog) d.dogs.push({ room_id: room, date, dog });
+    }),
   getConfig: async (room) => demoDb().config?.[room] || null,
   saveConfig: async (room, config) =>
     demoMutate((d) => {
