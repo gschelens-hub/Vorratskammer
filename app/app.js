@@ -449,6 +449,7 @@ function readPlanForm() {
 // ---------- sheets ----------
 function openSheet(html, onMount) {
   const dlg = $('#sheet');
+  state.onSheetClose = null;
   $('#sheet-body').innerHTML = html;
   state.sheetOpen = true;
   if (!dlg.open) dlg.showModal();
@@ -518,6 +519,10 @@ function openPerson(mid, deskId = null) {
         ? `Feiertag: ${esc(base.note)}`
         : 'Kein Planeintrag';
 
+  // Changes are collected here and saved together: with "Speichern" or when the sheet is closed in any way.
+  const pending = { status: ov?.status ?? null, note: ov?.note ?? '' };
+  let skipSave = false;
+
   openSheet(
     `<header class="sheet-head">
       <h2>${esc(p.name)} <small>${desk ? `· Tisch ${esc(desk.label)}` : '· ohne festen Tisch'}</small></h2>
@@ -531,32 +536,45 @@ function openPerson(mid, deskId = null) {
         )
         .join('')}
     </div>
-    <form class="note-form" data-note-form>
-      <label>Notiz für diesen Tag<input name="note" maxlength="60" value="${esc(ov?.note ?? '')}" placeholder="${esc(base.note || 'z. B. ab 11 Uhr da')}"></label>
-      <button class="btn" type="submit">Speichern</button>
+    <form class="note-only" data-note-form>
+      <label>Notiz für diesen Tag<input name="note" maxlength="60" value="${esc(ov?.note ?? '')}" placeholder="${esc(base.note || 'z. B. ab 11 Uhr da')}" enterkeyhint="done"></label>
     </form>
     <p class="base-info">${baseText}${ov ? ' · <strong>für diesen Tag geändert</strong>' : ''}</p>
-    ${ov ? '<button type="button" class="btn ghost" data-reset>Auf Planung zurücksetzen</button>' : ''}
-    ${desk ? `<section class="guest-box guest-section"><h3>Gastplatz</h3>${guestSection(desk.id, iso, info.status === 'office', p.name)}</section>` : ''}`,
+    ${ov ? '<button type="button" class="btn ghost small" data-reset>Auf Planung zurücksetzen</button>' : ''}
+    ${desk ? `<section class="guest-box guest-section"><h3>Gastplatz</h3>${guestSection(desk.id, iso, info.status === 'office', p.name)}</section>` : ''}
+    <div class="actions"><button type="button" class="btn primary wide-btn" data-save-person>Speichern</button></div>`,
     (root) => {
       root.querySelectorAll('[data-status]').forEach((b) =>
         b.addEventListener('click', () => {
-          closeSheet();
-          mutate(() => db.setOverride(room(), { member_id: mid, date: iso, status: b.dataset.status, note: ov?.note ?? null }));
+          pending.status = b.dataset.status;
+          root.querySelectorAll('[data-status]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
         }),
       );
+      const noteInput = root.querySelector('[data-note-form] input');
+      noteInput.addEventListener('input', () => (pending.note = noteInput.value));
       root.querySelector('[data-note-form]').addEventListener('submit', (e) => {
         e.preventDefault();
-        const note = e.target.note.value.trim().slice(0, 60);
         closeSheet();
-        if (!note && ov && !ov.status) mutate(() => db.clearOverride(room(), mid, iso));
-        else mutate(() => db.setOverride(room(), { member_id: mid, date: iso, status: ov?.status ?? null, note: note || null }));
       });
+      root.querySelector('[data-save-person]').addEventListener('click', closeSheet);
       root.querySelector('[data-reset]')?.addEventListener('click', () => {
+        skipSave = true;
         closeSheet();
         mutate(() => db.clearOverride(room(), mid, iso), 'Auf Planung zurückgesetzt');
       });
       if (desk) bindGuest(root, desk.id, iso);
+
+      state.onSheetClose = () => {
+        if (skipSave) return;
+        const note = pending.note.trim().slice(0, 60);
+        const changed = pending.status !== (ov?.status ?? null) || note !== (ov?.note ?? '').trim();
+        if (!changed) return;
+        if (!pending.status && !note) {
+          if (ov) mutate(() => db.clearOverride(room(), mid, iso), 'Gespeichert');
+          return;
+        }
+        mutate(() => db.setOverride(room(), { member_id: mid, date: iso, status: pending.status, note: note || null }), 'Gespeichert');
+      };
     },
   );
 }
@@ -1392,6 +1410,9 @@ function bind() {
   dlg.addEventListener('close', () => {
     state.sheetOpen = false;
     dlg.classList.remove('wide');
+    const onClose = state.onSheetClose;
+    state.onSheetClose = null;
+    onClose?.();
   });
   $('#stoerer').addEventListener('click', (e) => {
     if (e.target === $('#stoerer')) $('#stoerer').close();

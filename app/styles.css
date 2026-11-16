@@ -1440,3 +1440,20 @@ main {
     display: none;
   }
 }
+
+.note-only {
+  margin-top: 14px;
+}
+.note-only label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.wide-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+}
