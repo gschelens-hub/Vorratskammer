@@ -97,11 +97,30 @@ const live = {
   addNote: (room, note) => q(sb().from('z552_board').insert({ ...note, room_id: room })),
   deleteNote: (room, id) => q(sb().from('z552_board').delete().eq('id', id).eq('room_id', room)),
 
+  async getConfig(room) {
+    const rows = await q(sb().from('z552_roomconfig').select('config').eq('room_id', room).limit(1));
+    return rows[0]?.config || null;
+  },
+  saveConfig: (room, config) =>
+    q(sb().from('z552_roomconfig').upsert({ room_id: room, config, updated_at: new Date().toISOString() }, { onConflict: 'room_id' })),
+  /** Uploads a Störer image/GIF to the shared "stoerer" bucket (folder 552/). */
+  async uploadImage(room, which, file) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `552/${which}_${room}_${Date.now()}.${ext}`;
+    const { error } = await sb().storage.from('stoerer').upload(path, file, { upsert: true, contentType: file.type || 'image/*' });
+    if (error) throw new DbError(error.message || 'Upload fehlgeschlagen');
+    const { data } = sb().storage.from('stoerer').getPublicUrl(path);
+    return { url: data.publicUrl, path };
+  },
+  removeImage(path) {
+    if (path) sb().storage.from('stoerer').remove([path]).catch(() => {});
+  },
+
   /** Live updates: calls onChange whenever something in this room changes. Returns an unsubscribe function. */
   subscribe(room, onChange) {
     const db = sb();
     const ch = db.channel('z552:' + room);
-    for (const table of ['z552_members', 'z552_plans', 'z552_overrides', 'z552_guests', 'z552_board']) {
+    for (const table of ['z552_members', 'z552_plans', 'z552_overrides', 'z552_guests', 'z552_board', 'z552_roomconfig']) {
       ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table, filter: `room_id=eq.${room}` }, () => onChange(table));
       ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter: `room_id=eq.${room}` }, () => onChange(table));
       // Supabase cannot filter DELETE events, so listen to all and simply reload.
@@ -217,6 +236,21 @@ const demo = {
   addNote: async (room, note) =>
     demoMutate((d) => d.board.push({ ...note, id: uid(), room_id: room, created_at: new Date().toISOString() })),
   deleteNote: async (room, id) => demoMutate((d) => (d.board = d.board.filter((n) => n.id !== id))),
+  getConfig: async (room) => demoDb().config?.[room] || null,
+  saveConfig: async (room, config) =>
+    demoMutate((d) => {
+      d.config = d.config || {};
+      d.config[room] = config;
+    }),
+  uploadImage: (room, which, file) =>
+    new Promise((resolve, reject) => {
+      if (file.size > 2 * 1024 * 1024) return reject(new DbError('Im Demo-Modus max. 2 MB'));
+      const r = new FileReader();
+      r.onload = () => resolve({ url: r.result, path: '' });
+      r.onerror = () => reject(new DbError('Datei nicht lesbar'));
+      r.readAsDataURL(file);
+    }),
+  removeImage() {},
   subscribe(room, onChange) {
     const l = () => onChange('demo');
     demoListeners.add(l);

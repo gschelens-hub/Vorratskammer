@@ -89,8 +89,10 @@ async function mutate(fn, okMessage) {
     await fn();
     if (okMessage) toast(okMessage);
     await load();
+    return true;
   } catch (err) {
     toast(err instanceof DbError ? 'Speichern fehlgeschlagen: ' + err.message : 'Speichern fehlgeschlagen');
+    return false;
   }
 }
 
@@ -535,7 +537,7 @@ function openPerson(mid, deskId = null) {
     </form>
     <p class="base-info">${baseText}${ov ? ' · <strong>für diesen Tag geändert</strong>' : ''}</p>
     ${ov ? '<button type="button" class="btn ghost" data-reset>Auf Planung zurücksetzen</button>' : ''}
-    ${desk ? `<section class="guest-box"><h3>Gastplatz</h3>${guestSection(desk.id, iso, info.status === 'office', p.name)}</section>` : ''}`,
+    ${desk ? `<section class="guest-box guest-section"><h3>Gastplatz</h3>${guestSection(desk.id, iso, info.status === 'office', p.name)}</section>` : ''}`,
     (root) => {
       root.querySelectorAll('[data-status]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -844,6 +846,7 @@ function finishSetup() {
   delete document.body.dataset.setup;
   toast(`Hallo ${me()?.name || ''}!`);
   render();
+  maybeShowStartStoerer();
 }
 
 async function enterRoom() {
@@ -854,10 +857,364 @@ async function enterRoom() {
     $('#dbbanner').hidden = false;
     return;
   }
-  state.unsubscribe = db.subscribe(room(), scheduleReload);
+  await loadConfig();
+  state.unsubscribe = db.subscribe(room(), (table) => {
+    if (table === 'z552_roomconfig' || table === 'demo') loadConfig().then(() => me() && render());
+    if (table !== 'z552_roomconfig') scheduleReload();
+  });
   if (!me()) return showSetup('who', state.session.memberId ? 'Du bist in diesem Raum nicht mehr eingetragen. Bitte neu auswählen.' : '');
   delete document.body.dataset.setup;
   render();
+  maybeShowStartStoerer();
+}
+
+// ---------- room settings (developer menu) ----------
+const SPRUECHE_DEFAULT = ['Absolute Bubensahne', 'Wohlverdient!', 'Geil gemacht!', 'Ab in die Sonne!', 'Na endlich!'];
+const CFG_DEFAULT = {
+  pin: '0552',
+  theme: 'auto', // auto | light | dark
+  features: { board: true, guests: true, overview: true, bridge: true },
+  start: { on: false, title: 'Guten Morgen, Zimmer 552!', btn: "Los geht's", img: '', imgPath: '', freq: 'daily', from: '', to: '' },
+  vac: { on: false, title: 'Urlaub ist eingetragen!', btn: 'Geil!', img: '', imgPath: '', random: false, sprueche: SPRUECHE_DEFAULT.slice(), konfetti: true },
+};
+const clone = (x) => JSON.parse(JSON.stringify(x));
+function deepMerge(base, over) {
+  const out = Array.isArray(base) ? base.slice() : { ...base };
+  if (!over || typeof over !== 'object') return out;
+  for (const k of Object.keys(over)) {
+    if (over[k] && typeof over[k] === 'object' && !Array.isArray(over[k]) && base[k] && typeof base[k] === 'object') out[k] = deepMerge(base[k], over[k]);
+    else out[k] = over[k];
+  }
+  return out;
+}
+state.cfg = clone(CFG_DEFAULT);
+
+function cachedConfig() {
+  try {
+    return JSON.parse(LS.get('552.cfg', 'null'));
+  } catch {
+    return null;
+  }
+}
+async function loadConfig() {
+  if (!room()) return;
+  try {
+    const c = await db.getConfig(room());
+    state.cfg = deepMerge(CFG_DEFAULT, c || {});
+    LS.set('552.cfg', JSON.stringify(state.cfg));
+  } catch {
+    /* keep current config */
+  }
+  applyConfig();
+}
+function applyConfig() {
+  const c = state.cfg;
+  if (c.theme === 'light' || c.theme === 'dark') document.documentElement.dataset.theme = c.theme;
+  else delete document.documentElement.dataset.theme;
+  const dark = c.theme === 'dark' || (c.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]').content = dark ? '#17191c' : '#f3f1ec';
+  document.body.classList.toggle('no-board', !c.features.board);
+  document.body.classList.toggle('no-overview', !c.features.overview);
+  document.body.classList.toggle('no-bridge', !c.features.bridge);
+  document.body.classList.toggle('no-guests', !c.features.guests);
+}
+const feature = (name) => state.cfg.features[name] !== false;
+
+// secret access: tap the app icon 5 times
+let devTaps = 0;
+let devTimer = null;
+function onLogoTap() {
+  devTaps++;
+  clearTimeout(devTimer);
+  devTimer = setTimeout(() => (devTaps = 0), 1500);
+  if (devTaps >= 5) {
+    devTaps = 0;
+    askDevPin();
+  }
+}
+function askDevPin() {
+  openSheet(
+    `<header class="sheet-head"><h2>Entwicklermenü</h2><p>Bitte PIN eingeben</p></header>
+     <form data-pin class="stack">
+       <input name="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" required aria-label="PIN" class="pin-input">
+       <p class="err" hidden>Falsche PIN</p>
+       <button class="btn primary" type="submit">Öffnen</button>
+     </form>`,
+    (root) => {
+      const f = root.querySelector('[data-pin]');
+      f.pin.focus();
+      f.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (f.pin.value === String(state.cfg.pin)) openDev();
+        else {
+          root.querySelector('.err').hidden = false;
+          f.pin.select();
+        }
+      });
+    },
+  );
+}
+
+let DRAFT = null;
+const check = (id, on, text) => `<label class="chk"><input type="checkbox" id="${id}"${on ? ' checked' : ''}> ${text}</label>`;
+const imgPreview = (src) => src || 'icon-512.png';
+
+function openDev() {
+  DRAFT = clone(state.cfg);
+  renderDev();
+}
+function renderDev() {
+  const d = DRAFT;
+  const sel = (id, cur, opts) => `<select id="${id}">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  const stoerer = (key, label, extra) => `
+    <section class="dev-sec">
+      <h3>${label}</h3>
+      ${check(`d_${key}_on`, d[key].on, 'Aktiv')}
+      <label>Überschrift<textarea id="d_${key}_title" rows="2">${esc(d[key].title)}</textarea></label>
+      <label>Button-Text<input id="d_${key}_btn" value="${esc(d[key].btn)}" maxlength="30"></label>
+      <div class="dev-img">
+        <img id="d_${key}_prev" src="${esc(imgPreview(d[key].img))}" alt="">
+        <div>
+          <label class="btn small">Bild oder GIF wählen<input type="file" accept="image/*,.gif" data-upload="${key}" hidden></label>
+          ${d[key].img ? `<button type="button" class="btn small ghost danger" data-clear-img="${key}">Bild entfernen</button>` : '<p class="muted small">Ohne Bild wird das App-Icon gezeigt.</p>'}
+        </div>
+      </div>
+      ${extra}
+      <button type="button" class="btn small ghost" data-preview="${key}">Vorschau</button>
+    </section>`;
+
+  openSheet(
+    `<header class="sheet-head"><h2>Entwicklermenü</h2><p>Gilt für alle im Raum <strong>${esc(room())}</strong></p></header>
+    <div class="dev">
+      ${stoerer(
+        'start',
+        'Start-Störer',
+        `<div class="grid">
+          <label>Wie oft${sel('d_start_freq', d.start.freq, [
+            ['daily', 'einmal pro Tag'],
+            ['always', 'bei jedem Öffnen'],
+            ['once', 'nur einmal (bis zur nächsten Änderung)'],
+          ])}</label>
+          <label>Zeigen ab (optional)<input type="date" id="d_start_from" value="${esc(d.start.from)}"></label>
+          <label>Zeigen bis (optional)<input type="date" id="d_start_to" value="${esc(d.start.to)}"></label>
+        </div>`,
+      )}
+      ${stoerer(
+        'vac',
+        'Urlaubs-Störer (nach dem Eintragen von Urlaub)',
+        `${check('d_vac_random', d.vac.random, 'Zufälligen Spruch statt fester Überschrift')}
+         <div id="d_sprueche" class="dev-list">${d.vac.sprueche
+           .map((s, i) => `<div class="dev-row"><input value="${esc(s)}" data-spruch="${i}" maxlength="60"><button type="button" class="btn small ghost danger" data-del-spruch="${i}">✕</button></div>`)
+           .join('')}<button type="button" class="btn small" data-add-spruch>Spruch hinzufügen</button></div>
+         ${check('d_vac_konfetti', d.vac.konfetti, 'Konfetti')}`,
+      )}
+      <section class="dev-sec">
+        <h3>Darstellung & Funktionen</h3>
+        <label>Design${sel('d_theme', d.theme, [
+          ['auto', 'wie das Gerät'],
+          ['light', 'immer hell'],
+          ['dark', 'immer dunkel'],
+        ])}</label>
+        ${check('d_f_board', d.features.board, 'Pinnwand')}
+        ${check('d_f_guests', d.features.guests, 'Gastplatz')}
+        ${check('d_f_overview', d.features.overview, 'Wochenüberblick')}
+        ${check('d_f_bridge', d.features.bridge, 'Brückentag-Hinweise')}
+      </section>
+      <section class="dev-sec">
+        <h3>Zugang</h3>
+        <label>PIN für dieses Menü<input id="d_pin" value="${esc(d.pin)}" maxlength="12" inputmode="numeric"></label>
+      </section>
+      <section class="dev-sec">
+        <h3>Wartung</h3>
+        <div class="actions left">
+          <button type="button" class="btn small" data-export>Export (JSON)</button>
+          <label class="btn small">Import (JSON)<input type="file" accept="application/json,.json" data-import hidden></label>
+          <button type="button" class="btn small" data-cache>Cache leeren und neu laden</button>
+          <button type="button" class="btn small ghost danger" data-reset-cfg>Auf Standard zurücksetzen</button>
+        </div>
+        <p class="muted small">Version ${esc(window.__VER || '–')}</p>
+      </section>
+    </div>
+    <div class="actions sticky-actions">
+      <button type="button" class="btn ghost" data-close>Schließen</button>
+      <button type="button" class="btn primary" data-save>Für alle speichern</button>
+    </div>`,
+    (root) => {
+      $('#sheet').classList.add('wide');
+      root.querySelector('[data-close]').addEventListener('click', closeSheet);
+      root.querySelector('[data-save]').addEventListener('click', devSave);
+      root.querySelectorAll('[data-upload]').forEach((inp) => inp.addEventListener('change', () => devUpload(inp)));
+      root.querySelectorAll('[data-clear-img]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const key = b.dataset.clearImg;
+          db.removeImage(DRAFT[key].imgPath);
+          devCollect();
+          DRAFT[key].img = '';
+          DRAFT[key].imgPath = '';
+          renderDev();
+        }),
+      );
+      root.querySelectorAll('[data-preview]').forEach((b) =>
+        b.addEventListener('click', () => {
+          devCollect();
+          showStoerer(DRAFT[b.dataset.preview], b.dataset.preview === 'vac');
+        }),
+      );
+      root.querySelector('[data-add-spruch]').addEventListener('click', () => {
+        devCollect();
+        DRAFT.vac.sprueche.push('');
+        renderDev();
+      });
+      root.querySelectorAll('[data-del-spruch]').forEach((b) =>
+        b.addEventListener('click', () => {
+          devCollect();
+          DRAFT.vac.sprueche.splice(Number(b.dataset.delSpruch), 1);
+          renderDev();
+        }),
+      );
+      root.querySelector('[data-export]').addEventListener('click', () => {
+        devCollect();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(DRAFT, null, 2)], { type: 'application/json' }));
+        a.download = '552-einstellungen.json';
+        a.click();
+      });
+      root.querySelector('[data-import]').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const r = new FileReader();
+        r.onload = () => {
+          try {
+            DRAFT = deepMerge(CFG_DEFAULT, JSON.parse(r.result));
+            renderDev();
+            toast('Importiert – bitte noch speichern');
+          } catch {
+            toast('Ungültige Datei');
+          }
+        };
+        r.readAsText(file);
+      });
+      root.querySelector('[data-cache]').addEventListener('click', async () => {
+        try {
+          const regs = (await navigator.serviceWorker?.getRegistrations()) || [];
+          await Promise.all(regs.map((r) => r.unregister()));
+          if (window.caches) await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+        } finally {
+          location.reload();
+        }
+      });
+      root.querySelector('[data-reset-cfg]').addEventListener('click', () => {
+        if (!confirm('Alle Einstellungen dieses Menüs auf Standard zurücksetzen? (Erst nach „Für alle speichern“ wirksam.)')) return;
+        DRAFT = clone(CFG_DEFAULT);
+        renderDev();
+      });
+    },
+  );
+}
+
+function devCollect() {
+  const v = (id) => document.getElementById(id);
+  for (const key of ['start', 'vac']) {
+    DRAFT[key].on = v(`d_${key}_on`).checked;
+    DRAFT[key].title = v(`d_${key}_title`).value.slice(0, 200);
+    DRAFT[key].btn = v(`d_${key}_btn`).value.slice(0, 30);
+  }
+  DRAFT.start.freq = v('d_start_freq').value;
+  DRAFT.start.from = v('d_start_from').value;
+  DRAFT.start.to = v('d_start_to').value;
+  DRAFT.vac.random = v('d_vac_random').checked;
+  DRAFT.vac.konfetti = v('d_vac_konfetti').checked;
+  DRAFT.vac.sprueche = [...document.querySelectorAll('[data-spruch]')].map((i) => i.value);
+  DRAFT.theme = v('d_theme').value;
+  DRAFT.features = {
+    board: v('d_f_board').checked,
+    guests: v('d_f_guests').checked,
+    overview: v('d_f_overview').checked,
+    bridge: v('d_f_bridge').checked,
+  };
+  DRAFT.pin = v('d_pin').value.trim() || '0552';
+}
+
+async function devUpload(input) {
+  const key = input.dataset.upload;
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) return toast('Datei zu groß (max. 10 MB)');
+  devCollect();
+  toast('Lädt hoch …');
+  try {
+    const { url, path } = await db.uploadImage(room(), key, file);
+    if (DRAFT[key].imgPath && DRAFT[key].imgPath !== path) db.removeImage(DRAFT[key].imgPath);
+    DRAFT[key].img = url;
+    DRAFT[key].imgPath = path;
+    toast('Hochgeladen – bitte noch speichern');
+    renderDev();
+  } catch (err) {
+    toast('Upload fehlgeschlagen: ' + err.message);
+  }
+}
+
+async function devSave() {
+  devCollect();
+  DRAFT.vac.sprueche = DRAFT.vac.sprueche.map((s) => s.trim()).filter(Boolean);
+  DRAFT.start.rev = Date.now(); // "nur einmal" zeigt den Störer nach jeder Änderung wieder
+  try {
+    await db.saveConfig(room(), DRAFT);
+    state.cfg = deepMerge(CFG_DEFAULT, DRAFT);
+    LS.set('552.cfg', JSON.stringify(state.cfg));
+    applyConfig();
+    closeSheet();
+    render();
+    toast('Gespeichert – gilt für alle');
+  } catch (err) {
+    toast('Nicht gespeichert: ' + err.message);
+  }
+}
+
+// ---------- Störer ----------
+function showStoerer(s, withSpruch = false) {
+  let title = s.title;
+  if (withSpruch && s.random && s.sprueche?.length) title = s.sprueche[Math.floor(Math.random() * s.sprueche.length)];
+  const dlg = $('#stoerer');
+  dlg.innerHTML = `<div class="stoerer-card">
+      <h2>${esc(title).replace(/\n/g, '<br>')}</h2>
+      <img src="${esc(imgPreview(s.img))}" alt="">
+      <button type="button" class="btn primary" data-stoerer-close>${esc(s.btn || 'OK')}</button>
+    </div>`;
+  dlg.querySelector('[data-stoerer-close]').addEventListener('click', () => dlg.close());
+  if (!dlg.open) dlg.showModal();
+  if (withSpruch && s.konfetti) konfetti();
+}
+
+function maybeShowStartStoerer() {
+  const s = state.cfg.start;
+  if (!s.on) return;
+  const t = todayBerlin();
+  if ((s.from && t < s.from) || (s.to && t > s.to)) return;
+  if (s.freq === 'daily' && LS.get('552.startSeen') === t) return;
+  if (s.freq === 'once' && LS.get('552.startSeenRev') === String(s.rev || 0)) return;
+  LS.set('552.startSeen', t);
+  LS.set('552.startSeenRev', String(s.rev || 0));
+  showStoerer(s);
+}
+
+function konfetti() {
+  const colors = ['#2fa84f', '#e8b923', '#d64541', '#3b6fd8', '#ff8fb1', '#ffffff'];
+  const layer = document.createElement('div');
+  layer.className = 'konfetti';
+  for (let i = 0; i < 120; i++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = colors[i % colors.length];
+    p.style.animationDelay = Math.random() * 0.6 + 's';
+    p.style.animationDuration = 2.2 + Math.random() * 1.6 + 's';
+    p.style.setProperty('--x', (Math.random() * 2 - 1) * 120 + 'px');
+    p.style.setProperty('--rot', Math.random() * 720 + 'deg');
+    layer.appendChild(p);
+  }
+  // inside the open Störer dialog, so it is drawn above it (dialogs live in the top layer)
+  ($('#stoerer').open ? $('#stoerer') : document.body).appendChild(layer);
+  setTimeout(() => layer.remove(), 4500);
 }
 
 // ---------- toast ----------
@@ -906,6 +1263,7 @@ function bind() {
   $('#tab-room').addEventListener('click', () => setView('room'));
   $('#tab-plan').addEventListener('click', () => setView('plan'));
   $('#me-chip').addEventListener('click', openSettings);
+  $('#app .brand-logo').addEventListener('click', onLogoTap);
   $('#room-chip').addEventListener('click', shareRoom);
   $('#cal-prev').addEventListener('click', () => shiftWeek(-1));
   $('#cal-next').addEventListener('click', () => shiftWeek(1));
@@ -1010,11 +1368,20 @@ function bind() {
     if (plan.kind === 'recurring' && plan.end_date && plan.end_date < plan.start_date) return toast('Das Enddatum liegt vor dem Start.');
     const wasEdit = Boolean(state.editPlanId);
     state.editPlanId = null;
-    mutate(() => db.savePlan(room(), plan), wasEdit ? 'Gespeichert' : 'Eingetragen');
+    const isVacation = !wasEdit && plan.kind === 'absence' && plan.status === 'away';
+    mutate(() => db.savePlan(room(), plan), wasEdit ? 'Gespeichert' : 'Eingetragen').then((ok) => {
+      if (ok && isVacation && state.cfg.vac.on) showStoerer(state.cfg.vac, true);
+    });
   });
 
   const dlg = $('#sheet');
-  dlg.addEventListener('close', () => (state.sheetOpen = false));
+  dlg.addEventListener('close', () => {
+    state.sheetOpen = false;
+    dlg.classList.remove('wide');
+  });
+  $('#stoerer').addEventListener('click', (e) => {
+    if (e.target === $('#stoerer')) $('#stoerer').close();
+  });
   dlg.addEventListener('click', (e) => {
     if (e.target === dlg) closeSheet();
   });
@@ -1078,6 +1445,8 @@ fetch('version.txt', { cache: 'no-store' })
   .then((r) => (r.ok ? r.text() : ''))
   .then((t) => (window.__VER = t.trim()))
   .catch(() => {});
+state.cfg = deepMerge(CFG_DEFAULT, cachedConfig() || {});
+applyConfig();
 renderFurniture();
 bind();
 registerSW();

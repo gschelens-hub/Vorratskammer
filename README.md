@@ -6,7 +6,7 @@ Aufbau wie beim Abwesenheitsplaner: eine statische App (kein Build-Schritt), Sup
 
 ## Deploy
 
-1. **Supabase**: `supabase/schema.sql` im SQL-Editor ausführen (einmalig; erneutes Ausführen schadet nicht).
+1. **Supabase**: `supabase/schema.sql` im SQL-Editor ausführen (einmalig; erneutes Ausführen schadet nicht). Wer schon eine ältere Version eingerichtet hat, führt nur die neueren `update-v*.sql` aus.
 2. **ZIP bauen**: `./scripts/make-zip.sh` → `552.zip` (ein fertiges ZIP liegt auch im Repo).
 3. **Cloudflare**: Pages → Projekt → neue Bereitstellung → `552.zip` hochladen.
 
@@ -20,6 +20,17 @@ Supabase-Verbindung: `app/config.js`. Vorbelegt ist dasselbe Projekt wie beim Ab
 - **Wer bist du?** Danach wählt man sich einmal aus. Das Gerät merkt sich Raum und Person, z. B. für Pinnwand-Einträge. Mit „Ich bin neu hier“ legt man sich selbst an.
 - **Einstellungen** (Klick auf den eigenen Namen): Raumcode teilen, Person wechseln, Mitglieder umbenennen, hinzufügen, entfernen und Tische zuordnen, Raum verlassen.
 - Wie beim Abwesenheitsplaner ist der Raumcode der Schlüssel: Wer ihn kennt, kann mitmachen.
+
+## Entwicklermenü
+
+Fünfmal schnell auf das App-Icon oben links tippen, PIN eingeben (Standard `0552`). Die Einstellungen gelten für alle im Raum (Tabelle `z552_roomconfig`).
+
+- **Start-Störer**: Überschrift, Button-Text, Bild oder GIF, wie oft (einmal pro Tag / bei jedem Öffnen / nur einmal), optional nur in einem Zeitraum.
+- **Urlaubs-Störer**: erscheint nach dem Eintragen von Urlaub, wahlweise mit Zufalls-Spruch und Konfetti.
+- **Darstellung & Funktionen**: Design (Gerät/hell/dunkel); Pinnwand, Gastplatz, Wochenüberblick und Brückentag-Hinweise ein/aus.
+- **Zugang**: PIN ändern. **Wartung**: Export/Import als JSON, Cache leeren, auf Standard zurücksetzen.
+
+Störer-Bilder liegen im Supabase-Speicher `stoerer` (wie beim Abwesenheitsplaner) im Ordner `552/`.
 
 ## Funktionen
 
