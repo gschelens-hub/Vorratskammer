@@ -139,3 +139,11 @@ create policy "z552_stoerer_update" on storage.objects for update to anon, authe
   using (bucket_id = 'stoerer' and name like '552/%');
 create policy "z552_stoerer_delete" on storage.objects for delete to anon, authenticated
   using (bucket_id = 'stoerer' and name like '552/%');
+
+-- ===== Zusatz-Status KreditNext (Update v4) =====
+alter table z552_overrides drop constraint if exists z552_overrides_status_check;
+alter table z552_overrides add constraint z552_overrides_status_check
+  check (status in ('office', 'mobile', 'away', 'kreditnext'));
+alter table z552_plans drop constraint if exists z552_plans_status_check;
+alter table z552_plans add constraint z552_plans_status_check
+  check (status in ('office', 'mobile', 'away', 'kreditnext'));

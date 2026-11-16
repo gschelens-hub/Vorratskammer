@@ -132,6 +132,8 @@ export const STATUSES = {
   mobile: { label: 'Mobil', color: '#e8b923' },
   away: { label: 'Nicht da', color: '#d64541' },
   unknown: { label: 'Offen', color: '#8a8f98' },
+  // extra status, only for selected members (default: Julia); desk is striped green/red
+  kreditnext: { label: 'KreditNext', color: '#2fa84f', striped: true },
 };
 
 // Floor plan of the furniture, in the pixel units of the original drawing (design/buero-552.png).

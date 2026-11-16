@@ -57,6 +57,16 @@ const member = (id) => state.data.members.find((m) => m.id === id);
 const deskOwner = (deskId) => state.data.members.find((m) => m.desk === deskId) || null;
 const weekDays = () => [0, 1, 2, 3, 4].map((i) => addDays(state.weekStart, i));
 const dayInfo = (mid, iso) => resolveDay(mid, iso, state.data.plans, state.data.overrides);
+// status colour as style + data attribute (striped statuses get their pattern via CSS)
+const stAttr = (s) => `style="--c:${STATUSES[s].color}" data-s="${s}"`;
+const BASE_STATUSES = ['office', 'mobile', 'away'];
+function extraAllowed(mid) {
+  const k = state.cfg?.kreditnext;
+  if (!k || !k.on) return false;
+  if (Array.isArray(k.members) && k.members.length) return k.members.includes(mid);
+  return (member(mid)?.name || '').trim().toLowerCase() === 'julia';
+}
+const statusesFor = (mid) => (extraAllowed(mid) ? [...BASE_STATUSES, 'kreditnext'] : BASE_STATUSES);
 const guestFor = (desk, iso) => state.data.guests.find((g) => g.desk === desk && g.date === iso);
 
 // ---------- data ----------
@@ -132,7 +142,7 @@ function renderWeekbar() {
       const dots = people
         .map((p) => {
           const s = dayInfo(p.id, iso).status;
-          return `<i class="dot" style="--c:${STATUSES[s].color}" title="${esc(p.name)}: ${STATUSES[s].label}"></i>`;
+          return `<i class="dot" ${stAttr(s)} title="${esc(p.name)}: ${STATUSES[s].label}"></i>`;
         })
         .join('');
       return `<button class="cal-day${iso === state.today ? ' is-today' : ''}${hol ? ' is-holiday' : ''}" data-day="${i}" role="tab" aria-selected="${iso === state.selected}" aria-label="${WEEKDAYS_LONG[i]} ${formatShort(iso)}${hol ? ', ' + esc(hol) : ''}">
@@ -197,7 +207,7 @@ function renderRoom() {
       deskless
         .map((m) => {
           const info = dayInfo(m.id, iso);
-          return `<button class="chip" data-member="${m.id}" style="--c:${STATUSES[info.status].color}"><i class="dot" style="--c:${STATUSES[info.status].color}"></i>${esc(m.name)}${info.note ? ` · ${esc(info.note)}` : ''}</button>`;
+          return `<button class="chip" data-member="${m.id}" style="--c:${STATUSES[info.status].color}"><i class="dot" ${stAttr(info.status)}></i>${esc(m.name)}${info.note ? ` · ${esc(info.note)}` : ''}</button>`;
         })
         .join('')
     : '';
@@ -286,7 +296,7 @@ function renderOverview() {
       const cells = days
         .map((iso) => {
           const s = statusOf(p.id, iso);
-          return `<td><span class="cell" style="--c:${STATUSES[s].color}" title="${STATUSES[s].label}"></span></td>`;
+          return `<td><span class="cell" ${stAttr(s)} title="${STATUSES[s].label}"></span></td>`;
         })
         .join('');
       const officeDays = days.filter((iso) => statusOf(p.id, iso) === 'office').length;
@@ -303,8 +313,9 @@ function renderOverview() {
       <tbody>${rows}<tr class="total"><th scope="row">im Büro</th>${counts}<td></td></tr></tbody>
     </table>
     ${hints.map((h) => `<p class="hint">${esc(h)}</p>`).join('')}
-    <p class="legend">${Object.values(STATUSES)
-      .map((s) => `<span><i class="dot" style="--c:${s.color}"></i>${s.label}</span>`)
+    <p class="legend">${Object.entries(STATUSES)
+      .filter(([k]) => k !== 'kreditnext' || state.data.members.some((m) => extraAllowed(m.id)))
+      .map(([k, s]) => `<span><i class="dot" ${stAttr(k)}></i>${esc(s.label)}</span>`)
       .join('')}<span>✎ geändert</span><span>▤ geplant</span><span>↻ Turnus</span></p>`;
 }
 
@@ -359,7 +370,7 @@ function renderPlan() {
       ${Object.entries(KIND_LABEL).map(([k, l]) => `<label><input type="radio" name="kind" value="${k}"${k === f.kind ? ' checked' : ''}><span>${l}</span></label>`).join('')}
     </div>
     <div class="grid">
-      <label>Status<select name="status">${['away', 'mobile', 'office'].map((s) => opt(s, f.status, STATUSES[s].label)).join('')}</select></label>
+      <label>Status<select name="status" data-cur="${f.status}"></select></label>
       <label><span class="lbl-start">Von</span><input type="date" name="start_date" value="${f.start_date}" required></label>
       <label class="k-absence">Bis<input type="date" name="end_date" value="${f.end_date || f.start_date}"></label>
       <label class="k-recurring">Wiederholung<select name="repeat">${opt('weekly', f.repeat, 'wöchentlich')}${opt('monthly_nth', f.repeat, 'monatlich (n-ter Wochentag)')}</select></label>
@@ -409,6 +420,11 @@ function renderPlan() {
 
 function syncPlanForm() {
   const form = $('#plan-form');
+  const sel = form.status;
+  const cur = sel.value || sel.dataset.cur || 'away';
+  const mid = form.member.value;
+  const list = ['away', 'mobile', 'office', ...(extraAllowed(mid) ? ['kreditnext'] : [])];
+  sel.innerHTML = list.map((s) => `<option value="${s}"${s === cur ? ' selected' : ''}>${esc(STATUSES[s].label)}</option>`).join('');
   const kind = form.kind.value;
   const repeat = form.repeat.value;
   form.querySelectorAll('.k-absence, .k-recurring').forEach((el) => {
@@ -529,10 +545,10 @@ function openPerson(mid, deskId = null) {
       <p>${WEEKDAYS_LONG[weekday(iso)]}, ${formatShort(iso)}${iso.slice(0, 4)}</p>
     </header>
     <div class="status-pick" role="radiogroup" aria-label="Status">
-      ${['office', 'mobile', 'away']
+      ${statusesFor(mid)
         .map(
           (s) => `<button type="button" role="radio" aria-checked="${info.status === s}" data-status="${s}" style="--c:${STATUSES[s].color}">
-            <i class="dot big" style="--c:${STATUSES[s].color}"></i>${STATUSES[s].label}</button>`,
+            <i class="dot big" ${stAttr(s)}></i>${esc(STATUSES[s].label)}</button>`,
         )
         .join('')}
     </div>
@@ -890,6 +906,7 @@ async function enterRoom() {
 const SPRUECHE_DEFAULT = ['Absolute Bubensahne', 'Wohlverdient!', 'Geil gemacht!', 'Ab in die Sonne!', 'Na endlich!'];
 const CFG_DEFAULT = {
   pin: '0552',
+  kreditnext: { on: true, label: 'KreditNext', members: [] }, // members [] = everyone named Julia
   whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
   features: { board: true, guests: true, overview: true, bridge: true },
@@ -928,6 +945,7 @@ async function loadConfig() {
 }
 function applyConfig() {
   const c = state.cfg;
+  STATUSES.kreditnext.label = (c.kreditnext?.label || 'KreditNext').slice(0, 20);
   if (c.theme === 'light' || c.theme === 'dark') document.documentElement.dataset.theme = c.theme;
   else delete document.documentElement.dataset.theme;
   const dark = c.theme === 'dark' || (c.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1042,6 +1060,19 @@ function renderDev() {
         ${check('d_f_guests', d.features.guests, 'Gastplatz')}
         ${check('d_f_overview', d.features.overview, 'Wochenüberblick')}
         ${check('d_f_bridge', d.features.bridge, 'Brückentag-Hinweise')}
+      </section>
+      <section class="dev-sec">
+        <h3>Zusatz-Status (Tisch grün/rot gestreift)</h3>
+        ${check('d_kn_on', d.kreditnext.on, 'Aktiv')}
+        <label>Bezeichnung<input id="d_kn_label" value="${esc(d.kreditnext.label)}" maxlength="20"></label>
+        <div class="dev-list"><span class="muted small">Auswählbar für:</span>
+          ${state.data.members
+            .map((m) => {
+              const on = d.kreditnext.members?.length ? d.kreditnext.members.includes(m.id) : m.name.trim().toLowerCase() === 'julia';
+              return check(`d_kn_m_${m.id}`, on, esc(m.name)).replace('<input ', `<input data-kn-member="${m.id}" `);
+            })
+            .join('')}
+        </div>
       </section>
       <section class="dev-sec">
         <h3>WhatsApp-Gruppe</h3>
@@ -1162,6 +1193,11 @@ function devCollect() {
   };
   DRAFT.pin = v('d_pin').value.trim() || '0552';
   DRAFT.whatsapp = v('d_whatsapp').value.trim();
+  DRAFT.kreditnext = {
+    on: v('d_kn_on').checked,
+    label: v('d_kn_label').value.trim() || 'KreditNext',
+    members: [...document.querySelectorAll('[data-kn-member]')].filter((i) => i.checked).map((i) => i.dataset.knMember),
+  };
 }
 
 async function devUpload(input) {
@@ -1388,7 +1424,7 @@ function bind() {
   });
 
   $('#plan-form').addEventListener('change', (e) => {
-    if (['kind', 'repeat'].includes(e.target.name)) syncPlanForm();
+    if (['kind', 'repeat', 'member'].includes(e.target.name)) syncPlanForm();
     const form = $('#plan-form');
     if (e.target.name === 'start_date' && form.end_date.value < e.target.value) form.end_date.value = e.target.value;
   });

@@ -1457,3 +1457,21 @@ main {
   padding: 12px;
   font-size: 16px;
 }
+
+/* striped status (KreditNext): green/red */
+.dot[data-s='kreditnext'],
+.cell[data-s='kreditnext'] {
+  background: repeating-linear-gradient(135deg, #2fa84f 0 3px, #d64541 3px 6px);
+}
+.desk.status-kreditnext {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, #2fa84f 90%, transparent) 0 2.4cqw,
+    color-mix(in srgb, #d64541 90%, transparent) 2.4cqw 4.8cqw
+  );
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.status-pick {
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+}
