@@ -50,16 +50,17 @@
 
           <h1 id="day-title" class="day-title"></h1>
 
-          <div id="stage" class="stage">
-            <div class="stage-inner">
-              <img src="buero-552.webp" alt="Grundriss von Zimmer 552 mit drei Schreibtischen" width="1600" height="1120" />
-              <div id="board" class="board" aria-label="Pinnwand"></div>
-              <div id="desks"></div>
+          <div class="room-grid">
+            <div id="stage" class="stage">
+              <div class="stage-inner">
+                <svg id="furniture" class="furniture" role="img" aria-label="Drei Schreibtische mit Stühlen"></svg>
+                <div id="desks"></div>
+              </div>
+              <div id="deskless" class="deskless" hidden></div>
             </div>
+            <section id="board" class="card board" aria-label="Pinnwand"></section>
           </div>
-          <div id="deskless" class="deskless" hidden></div>
 
-          <section id="board-list" class="card board-list"></section>
           <section id="overview" class="card overview"></section>
         </section>
 

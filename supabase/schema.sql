@@ -60,13 +60,21 @@ create table if not exists z552_guests (
 create table if not exists z552_board (
   id          uuid primary key default gen_random_uuid(),
   room_id     text not null references z552_rooms(code) on delete cascade,
-  text        text not null check (char_length(text) between 1 and 140),
+  title       text not null default '' check (char_length(title) <= 40),
+  text        text not null default '' check (char_length(text) <= 1000),
   color       text not null default 'yellow',
   author_id   text,
   author_name text not null default '',
   created_at  timestamptz not null default now()
 );
 create index if not exists z552_board_room on z552_board(room_id);
+
+-- Update v2 (Pinnwand mit Überschrift) für bereits angelegte Tabellen
+alter table z552_board add column if not exists title text not null default '';
+alter table z552_board drop constraint if exists z552_board_text_check;
+alter table z552_board drop constraint if exists z552_board_title_check;
+alter table z552_board add constraint z552_board_text_check check (char_length(text) <= 1000);
+alter table z552_board add constraint z552_board_title_check check (char_length(title) <= 40);
 
 -- Zeilenschutz: Zugriff mit dem Anon-Key erlauben (wie beim Abwesenheitsplaner).
 do $$

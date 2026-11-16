@@ -11,6 +11,7 @@ import {
   mondayOf,
   MONTHS,
   planMatches,
+  PLAN,
   planned,
   resolveDay,
   STATUSES,
@@ -202,18 +203,51 @@ function renderRoom() {
 
 const NOTE_COLORS = { yellow: '#fff3a8', pink: '#ffd1dc', blue: '#cfe8ff', green: '#d4f5c9' };
 
+const noteTitle = (n) => (n.title || '').trim() || (n.text || '').trim().split('\n')[0].slice(0, 40) || 'Notiz';
+
 function renderBoard() {
-  const html =
-    state.data.board
-      .map(
-        (n, i) =>
-          `<button class="sticky" data-note="${n.id}" style="--note:${NOTE_COLORS[n.color] || NOTE_COLORS.yellow};--r:${((i * 37) % 7) - 3}deg">
-            <span class="sticky-text">${esc(n.text)}</span>${n.author_name ? `<span class="sticky-author">${esc(n.author_name)}</span>` : ''}
-          </button>`,
-      )
-      .join('') + '<button class="sticky add" data-note-add aria-label="Notiz an die Pinnwand">+</button>';
-  $('#board').innerHTML = html;
-  $('#board-list').innerHTML = `<h3>Pinnwand</h3><div class="board-list-items">${html}</div>`;
+  const notes = state.data.board
+    .map(
+      (n, i) =>
+        `<button class="sticky" data-note="${n.id}" style="--note:${NOTE_COLORS[n.color] || NOTE_COLORS.yellow};--r:${((i * 37) % 7) - 3}deg">
+          <span class="sticky-title">${esc(noteTitle(n))}</span>${n.author_name ? `<span class="sticky-author">${esc(n.author_name)}</span>` : ''}
+        </button>`,
+    )
+    .join('');
+  $('#board').innerHTML = `<div class="board-head"><h3>Pinnwand</h3><button type="button" class="btn small" data-note-add>+ Notiz</button></div>
+    <div class="board-notes">${notes || '<p class="muted small">Noch nichts angepinnt.</p>'}</div>`;
+}
+
+/** Draws the furniture (desks + chairs) once; the coloured desk buttons lie on top. */
+function renderFurniture() {
+  const chair = ([cx, cy], backUp) => {
+    const base = backUp ? -90 : 90;
+    const pt = (deg, r) => [cx + r * Math.cos((deg * Math.PI) / 180), cy + r * Math.sin((deg * Math.PI) / 180)];
+    const [x1, y1] = pt(base - 58, 74);
+    const [x2, y2] = pt(base + 58, 74);
+    const dir = backUp ? -1 : 1;
+    return `<g>
+      <path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A74 74 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" class="f-back"/>
+      <rect x="${cx - 74}" y="${cy - 32 + dir * 10}" width="20" height="62" rx="9" class="f-dark"/>
+      <rect x="${cx + 54}" y="${cy - 32 + dir * 10}" width="20" height="62" rx="9" class="f-dark"/>
+      <circle cx="${cx}" cy="${cy}" r="56" fill="url(#seat)"/></g>`;
+  };
+  const desk = (d) => {
+    const [x, y, w, h] = d.rect;
+    const mx = x + w / 2;
+    const monitor =
+      d.notePos === 'above'
+        ? `<rect x="${mx - 127}" y="${y + h - 50}" width="254" height="14" rx="7" class="f-dark"/><rect x="${mx - 20}" y="${y + h - 40}" width="40" height="30" rx="5" class="f-dark"/>`
+        : `<rect x="${mx - 20}" y="${y + 10}" width="40" height="30" rx="5" class="f-dark"/><rect x="${mx - 127}" y="${y + 36}" width="254" height="14" rx="7" class="f-dark"/>`;
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" class="f-desk" filter="url(#deskShadow)"/>${monitor}`;
+  };
+  $('#furniture').setAttribute('viewBox', `${PLAN.x} ${PLAN.y} ${PLAN.w} ${PLAN.h}`);
+  $('#furniture').innerHTML = `<defs>
+      <radialGradient id="seat" cx="45%" cy="40%" r="65%"><stop offset="0" class="f-seat-hi"/><stop offset="1" class="f-seat-lo"/></radialGradient>
+      <filter id="deskShadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".16"/></filter>
+    </defs>
+    ${DESKS.map((d) => chair(d.chair, d.notePos === 'above')).join('')}
+    ${DESKS.map(desk).join('')}`;
 }
 
 function renderOverview() {
@@ -529,7 +563,8 @@ function openNoteEditor() {
   openSheet(
     `<header class="sheet-head"><h2>Pinnwand</h2><p>Notiz fürs ganze Zimmer</p></header>
     <form data-board-form class="stack">
-      <label>Text<textarea name="text" maxlength="140" rows="3" required placeholder="z. B. Drucker leer, Heizung spinnt"></textarea></label>
+      <label>Überschrift<input name="title" maxlength="40" required placeholder="z. B. Drucker leer"></label>
+      <label>Text (optional)<textarea name="text" maxlength="1000" rows="5" placeholder="Details, z. B. wer sich kümmert"></textarea></label>
       <div class="seg colors" role="radiogroup" aria-label="Farbe">
         ${Object.entries(NOTE_COLORS)
           .map(([k, c], i) => `<label><input type="radio" name="color" value="${k}"${i === 0 ? ' checked' : ''}><span style="background:${c}" aria-label="${k}"></span></label>`)
@@ -538,14 +573,15 @@ function openNoteEditor() {
       <button class="btn primary" type="submit">Anheften</button>
     </form>`,
     (root) => {
-      root.querySelector('textarea').focus();
+      root.querySelector('input[name=title]').focus();
       root.querySelector('[data-board-form]').addEventListener('submit', (e) => {
         e.preventDefault();
-        const text = e.target.text.value.trim().slice(0, 140);
-        if (!text) return;
+        const title = e.target.title.value.trim().slice(0, 40);
+        const text = e.target.text.value.trim().slice(0, 1000);
+        if (!title) return;
         const color = e.target.color.value;
         closeSheet();
-        mutate(() => db.addNote(room(), { text, color, author_id: me()?.id || null, author_name: me()?.name || '' }));
+        mutate(() => db.addNote(room(), { title, text, color, author_id: me()?.id || null, author_name: me()?.name || '' }));
       });
     },
   );
@@ -554,11 +590,14 @@ function openNoteEditor() {
 function openNote(id) {
   const n = state.data.board.find((x) => x.id === id);
   if (!n) return;
-  const when = new Date(n.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric' });
+  const when = new Date(n.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  const body = (n.title || '').trim() ? n.text : (n.text || '').split('\n').slice(1).join('\n');
   openSheet(
-    `<div class="sticky big" style="--note:${NOTE_COLORS[n.color] || NOTE_COLORS.yellow};--r:0deg">
-      <span class="sticky-text">${esc(n.text)}</span><span class="sticky-author">${esc(n.author_name || 'unbekannt')} · ${esc(when)}</span>
-    </div>
+    `<article class="note-big" style="--note:${NOTE_COLORS[n.color] || NOTE_COLORS.yellow}">
+      <h2>${esc(noteTitle(n))}</h2>
+      ${(body || '').trim() ? `<p class="note-body">${esc(body.trim())}</p>` : ''}
+      <p class="note-meta">${esc(n.author_name || 'unbekannt')} · ${esc(when)}</p>
+    </article>
     <div class="actions"><button type="button" class="btn ghost" data-close>Schließen</button><button type="button" class="btn primary" data-done>Erledigt – abnehmen</button></div>`,
     (root) => {
       root.querySelector('[data-close]').addEventListener('click', closeSheet);
@@ -1039,6 +1078,7 @@ fetch('version.txt', { cache: 'no-store' })
   .then((r) => (r.ok ? r.text() : ''))
   .then((t) => (window.__VER = t.trim()))
   .catch(() => {});
+renderFurniture();
 bind();
 registerSW();
 if (state.session?.room) enterRoom();

@@ -134,11 +134,29 @@ export const STATUSES = {
   unknown: { label: 'Offen', color: '#8a8f98' },
 };
 
-// Desk positions in the floor plan (percent of image width/height).
+// Floor plan of the furniture, in the pixel units of the original drawing (design/buero-552.png).
+// Only the desks with their chairs are drawn; PLAN is the visible section.
+export const PLAN = { x: 1000, y: 330, w: 1180, h: 1020 };
+
+const deskDef = (id, label, rect, chair, notePos) => {
+  const [rx, ry, rw, rh] = rect;
+  return {
+    id,
+    label,
+    rect,
+    chair, // [cx, cy] of the chair seat
+    notePos, // where the note bubble goes (over the chair)
+    x: +(((rx - PLAN.x) / PLAN.w) * 100).toFixed(2),
+    y: +(((ry - PLAN.y) / PLAN.h) * 100).toFixed(2),
+    w: +((rw / PLAN.w) * 100).toFixed(2),
+    h: +((rh / PLAN.h) * 100).toFixed(2),
+  };
+};
+
 export const DESKS = [
-  { id: 'top', label: 'oben', x: 69.51, y: 29.52, w: 23.79, h: 16.02, notePos: 'above' },
-  { id: 'bottom_left', label: 'unten links', x: 42.97, y: 49.93, w: 23.79, h: 16.09, notePos: 'below' },
-  { id: 'bottom_right', label: 'unten rechts', x: 69.51, y: 49.93, w: 23.79, h: 16.09, notePos: 'below' },
+  deskDef('top', 'oben', [1619, 554, 511, 241], [1874, 452], 'above'),
+  deskDef('bottom_left', 'unten links', [1049, 861, 511, 242], [1305, 1218], 'below'),
+  deskDef('bottom_right', 'unten rechts', [1619, 861, 511, 242], [1874, 1218], 'below'),
 ];
 
 // Members a new room starts with.

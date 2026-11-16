@@ -152,8 +152,9 @@ function demoSeed(d, code, members) {
   );
   d.guests.push({ room_id: code, date: addDays(mon, 4), desk: 'bottom_right', guest_name: 'Praktikantin Mia', booked_by: 'Julia' });
   d.board.push(
-    { id: uid(), room_id: code, text: 'Drucker: Toner fast leer', color: 'yellow', author_id: m, author_name: 'Marc', created_at: now },
-    { id: uid(), room_id: code, text: 'Pflanzen gießen nicht vergessen', color: 'green', author_id: j, author_name: 'Julia', created_at: now },
+    { id: uid(), room_id: code, title: 'Toner fast leer', text: 'Der Drucker im Flur meldet „Toner niedrig“. Ich bestelle bis Mittwoch nach – falls jemand vorher druckt: Ersatzkartusche liegt im Schrank unten links.', color: 'yellow', author_id: m, author_name: 'Marc', created_at: now },
+    { id: uid(), room_id: code, title: 'Pflanzen gießen', text: 'Montag und Donnerstag, jeweils eine Kanne. Die Orchidee nur einmal pro Woche.', color: 'green', author_id: j, author_name: 'Julia', created_at: now },
+    { id: uid(), room_id: code, title: 'Weihnachtsfeier 12.12.', text: 'Bitte bis Freitag eintragen, wer kommt und ob vegetarisch.', color: 'pink', author_id: l, author_name: 'Luca', created_at: now },
   );
 }
 
