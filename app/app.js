@@ -468,7 +468,7 @@ function openSheet(html, onMount) {
   state.onSheetClose = null;
   $('#sheet-body').innerHTML = html;
   state.sheetOpen = true;
-  if (!dlg.open) dlg.showModal();
+  openDialog(dlg);
   onMount?.($('#sheet-body'));
 }
 function closeSheet() {
@@ -1250,7 +1250,7 @@ function showStoerer(s, withSpruch = false) {
       <button type="button" class="btn primary" data-stoerer-close>${esc(s.btn || 'OK')}</button>
     </div>`;
   dlg.querySelector('[data-stoerer-close]').addEventListener('click', () => dlg.close());
-  if (!dlg.open) dlg.showModal();
+  openDialog(dlg);
   if (withSpruch && s.konfetti) konfetti();
 }
 
@@ -1283,6 +1283,118 @@ function konfetti() {
   // inside the open Störer dialog, so it is drawn above it (dialogs live in the top layer)
   ($('#stoerer').open ? $('#stoerer') : document.body).appendChild(layer);
   setTimeout(() => layer.remove(), 4500);
+}
+
+// ---------- dialogs: background lock, rubber band, "Aua!" ----------
+let scrollLocks = 0;
+let lockedY = 0;
+function lockScroll() {
+  if (scrollLocks++ > 0) return;
+  lockedY = window.scrollY;
+  Object.assign(document.body.style, { position: 'fixed', top: `-${lockedY}px`, left: '0', right: '0', width: '100%' });
+}
+function unlockScroll() {
+  if (scrollLocks === 0 || --scrollLocks > 0) return;
+  Object.assign(document.body.style, { position: '', top: '', left: '', right: '', width: '' });
+  window.scrollTo(0, lockedY);
+}
+function openDialog(dlg) {
+  if (dlg.open) return;
+  dlg.showModal();
+  lockScroll();
+}
+
+const RUBBER_MAX = 90; // max. visible stretch in px
+const TEAR_AT = 240; // finger distance in px at which the dialog "tears"
+const rubber = (d) => Math.sign(d) * RUBBER_MAX * (1 - 1 / (Math.abs(d) / (RUBBER_MAX * 1.2) + 1));
+
+/** Lets a dialog stretch like rubber at its scroll limits instead of scrolling the page behind it. */
+function setupRubberBand(dlg) {
+  let start = null;
+  let torn = false;
+  const setOffset = (px, animate) => {
+    dlg.style.transition = animate ? 'transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1)' : 'none';
+    dlg.style.setProperty('--pull', `${px}px`);
+    dlg.classList.toggle('pulled', px !== 0);
+  };
+  dlg.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length !== 1 || torn) return;
+      start = { y: e.touches[0].clientY, active: false };
+    },
+    { passive: true },
+  );
+  dlg.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!start || torn) return;
+      const dy = e.touches[0].clientY - start.y;
+      // which element would scroll? (the dialog itself, or a scrollable field inside it)
+      const scroller = e.target.closest('textarea') && e.target.scrollHeight > e.target.clientHeight ? e.target : dlg;
+      const atTop = scroller.scrollTop <= 0;
+      const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+      if (!start.active) {
+        if ((dy > 0 && atTop) || (dy < 0 && atBottom)) {
+          start.active = true;
+          start.y = e.touches[0].clientY; // stretch starts at the edge, not where the finger began
+        } else return; // normal scrolling inside the dialog
+      }
+      e.preventDefault(); // never scroll the page behind
+      const d = e.touches[0].clientY - start.y;
+      if ((d > 0 && !atTop) || (d < 0 && !atBottom)) {
+        start.active = false;
+        setOffset(0, false);
+        return;
+      }
+      if (Math.abs(d) > TEAR_AT) {
+        tear(d > 0 ? 1 : -1);
+        return;
+      }
+      setOffset(rubber(d), false);
+    },
+    { passive: false },
+  );
+  const release = () => {
+    if (!start) return;
+    start = null;
+    if (!torn) setOffset(0, true);
+  };
+  dlg.addEventListener('touchend', release);
+  dlg.addEventListener('touchcancel', release);
+  dlg.addEventListener('close', () => {
+    start = null;
+    torn = false;
+    dlg.classList.remove('torn', 'pulled');
+    dlg.style.removeProperty('--pull');
+    dlg.querySelectorAll('.crack, .aua').forEach((x) => x.remove());
+  });
+
+  function tear(dir) {
+    torn = true;
+    start = null;
+    setOffset(RUBBER_MAX * dir, false);
+    navigator.vibrate?.([30, 40, 60]);
+    const crack = document.createElement('div');
+    crack.className = 'crack';
+    crack.innerHTML =
+      '<svg viewBox="0 0 400 40" preserveAspectRatio="none"><polyline points="0,20 30,8 55,30 85,6 110,28 140,10 170,32 200,12 230,30 260,6 290,26 320,8 350,30 380,12 400,22"/></svg>';
+    const aua = document.createElement('div');
+    aua.className = 'aua';
+    aua.textContent = 'Aua!';
+    dlg.append(crack, aua);
+    dlg.classList.add('torn');
+    setTimeout(() => {
+      dlg.classList.remove('torn');
+      crack.remove();
+      setOffset(0, true);
+    }, 750);
+    setTimeout(() => aua.classList.add('out'), 1100);
+    setTimeout(() => {
+      aua.remove();
+      torn = false;
+    }, 1400);
+  }
 }
 
 // ---------- toast ----------
@@ -1450,6 +1562,10 @@ function bind() {
     state.onSheetClose = null;
     onClose?.();
   });
+  dlg.addEventListener('close', unlockScroll);
+  $('#stoerer').addEventListener('close', unlockScroll);
+  setupRubberBand(dlg);
+  setupRubberBand($('#stoerer'));
   $('#stoerer').addEventListener('click', (e) => {
     if (e.target === $('#stoerer')) $('#stoerer').close();
   });

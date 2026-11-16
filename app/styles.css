@@ -1475,3 +1475,107 @@ main {
 .status-pick {
   grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
 }
+
+/* ---------- dialogs: no background scroll, rubber band, tear ---------- */
+.sheet,
+.stoerer {
+  overscroll-behavior: contain;
+}
+/* transform only while pulled, so fixed children (confetti) still cover the whole screen otherwise */
+.sheet.pulled,
+.stoerer.pulled {
+  transform: translateY(var(--pull, 0px));
+}
+.sheet.torn,
+.stoerer.torn {
+  animation: tear 0.75s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+@keyframes tear {
+  0% {
+    transform: translateY(var(--pull, 0px));
+  }
+  12% {
+    transform: translateY(calc(var(--pull, 0px) * 1.15)) rotate(-2.5deg) scale(1.03);
+  }
+  26% {
+    transform: translateY(var(--pull, 0px)) rotate(2deg);
+  }
+  40% {
+    transform: translateY(calc(var(--pull, 0px) * 0.8)) rotate(-1.5deg);
+  }
+  55% {
+    transform: translateY(calc(var(--pull, 0px) * 0.6)) rotate(1deg);
+  }
+  100% {
+    transform: translateY(calc(var(--pull, 0px) * 0.5)) rotate(0);
+  }
+}
+.crack {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 42%;
+  height: 34px;
+  pointer-events: none;
+  z-index: 5;
+  animation: crack 0.75s ease-out forwards;
+}
+.crack svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.crack polyline {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 9;
+  stroke-linejoin: miter;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35));
+}
+@keyframes crack {
+  0% {
+    clip-path: inset(0 50% 0 50%);
+  }
+  25% {
+    clip-path: inset(0 0 0 0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+.aua {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 6;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  font: 900 44px/1 'Inter Display', 'Inter', system-ui, sans-serif;
+  color: #fff;
+  background: var(--red);
+  padding: 10px 22px 12px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 4px #fff;
+  pointer-events: none;
+  animation: aua-in 0.45s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+.aua.out {
+  transition: opacity 0.3s, transform 0.3s;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-8deg) scale(0.6);
+}
+@keyframes aua-in {
+  from {
+    transform: translate(-50%, -50%) rotate(-25deg) scale(0.2);
+    opacity: 0;
+  }
+}
+/* bottom sheet on phones: when pulled up, extend the paper downwards so no gap shows */
+@media (max-width: 560px) {
+  .sheet.pulled {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 120px 0 0 var(--paper);
+  }
+}
