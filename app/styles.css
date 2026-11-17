@@ -1810,3 +1810,50 @@ main {
     animation: none !important;
   }
 }
+
+/* ---------- quote of the day ---------- */
+.quote {
+  position: relative;
+  max-width: 720px;
+  margin: 10px auto 22px;
+  padding: 12px 44px 12px 18px;
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  border-left: 4px solid var(--red);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.quote.closing {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.quote-text {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.quote-text strong {
+  font-weight: 700;
+}
+.quote-src {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.quote-x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+}
+.quote-x:hover {
+  background: var(--bg);
+  color: var(--ink);
+}

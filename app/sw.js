@@ -1,9 +1,9 @@
 // 552 – Service Worker (gleiches Muster wie der Abwesenheitsplaner).
 // Bei jeder neuen Version CACHE hochzählen und version.txt anpassen.
 // Später: Push-Mitteilungen (Morgen-Erinnerung) kommen hier mit 'push'/'notificationclick' dazu.
-const CACHE = '552-v10';
+const CACHE = '552-v11';
 const ASSETS = [
-  './index.html', './styles.css', './app.js', './data.js', './logic.js', './config.js', './dogs.js',
+  './index.html', './styles.css', './app.js', './data.js', './logic.js', './config.js', './dogs.js', './zitate.js',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png', './icon-180.png', './favicon-32.png', './manifest.json', './version.txt',
 ];
 // Datenbank-Bibliothek: nach dem ersten Laden aus dem Cache, damit die App auch startet, wenn das CDN hakt

@@ -1,8 +1,10 @@
 // 552 – Zimmer-App
 import { BASKET, basketSvg, DOGS, dogPreviewSvg } from './dogs.js';
+import { ZITATE } from './zitate.js';
 import { db, DbError, isDemo, LS, newMemberId, newRoomCode } from './data.js';
 import {
   addDays,
+  diffDays,
   DESKS,
   formatShort,
   fromISO,
@@ -116,6 +118,7 @@ function render() {
   $('#room-chip').textContent = room() || '';
   $('#demo-flag').hidden = !isDemo;
   if (state.view === 'room') {
+    renderQuote();
     renderWeekbar();
     renderRoom();
     renderBoard();
@@ -123,6 +126,42 @@ function render() {
   } else {
     renderPlan();
   }
+}
+
+// ---------- quote of the day ----------
+/** Same quote for everyone: counts working days since 5.1.2026, weekends keep Friday's quote. */
+function quoteOfDay(iso) {
+  const epoch = '2026-01-05'; // a Monday
+  const days = Math.max(0, diffDays(epoch, iso));
+  const workdays = Math.floor(days / 7) * 5 + Math.min(days % 7, 4);
+  return ZITATE[workdays % ZITATE.length];
+}
+function renderQuote() {
+  const el = $('#quote');
+  const t = state.today;
+  const show = state.cfg?.features?.quotes !== false && LS.get('552.quoteClosed') !== t && ZITATE.length > 0;
+  el.hidden = !show;
+  if (!show) return;
+  const z = quoteOfDay(t);
+  const single = z.lines.length === 1;
+  const body = z.lines
+    .map((l) =>
+      single
+        ? `<p class="quote-text">„${esc(l.text.replace(/„/g, '‚').replace(/“/g, '‘'))}“</p>`
+        : `<p class="quote-text"><strong>${esc(l.who.split(' ')[0])}:</strong> ${esc(l.text)}</p>`,
+    )
+    .join('');
+  const who = single ? z.lines[0].who : [...new Set(z.lines.map((l) => l.who))].join(' & ');
+  el.innerHTML = `<div class="quote-body">${body}<p class="quote-src"><em>${esc(who)} – ${esc(z.source)}</em></p></div>
+    <button type="button" class="quote-x" aria-label="Zitat für heute schließen">✕</button>`;
+  el.querySelector('.quote-x').addEventListener('click', () => {
+    LS.set('552.quoteClosed', t);
+    el.classList.add('closing');
+    setTimeout(() => {
+      el.classList.remove('closing');
+      el.hidden = true;
+    }, 220);
+  });
 }
 
 function renderWeekbar() {
@@ -977,7 +1016,7 @@ const CFG_DEFAULT = {
   kreditnext: { on: true, label: 'KreditNext', members: [] }, // members [] = everyone named Julia
   whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
-  features: { board: true, guests: true, overview: true, bridge: true, dogs: false },
+  features: { board: true, guests: true, overview: true, bridge: true, dogs: false, quotes: true },
   start: { on: false, title: 'Guten Morgen, Zimmer 552!', btn: "Los geht's", img: '', imgPath: '', freq: 'daily', from: '', to: '' },
   vac: { on: false, title: 'Urlaub ist eingetragen!', btn: 'Geil!', img: '', imgPath: '', random: false, sprueche: SPRUECHE_DEFAULT.slice(), konfetti: true },
 };
@@ -1130,6 +1169,7 @@ function renderDev() {
         ${check('d_f_overview', d.features.overview, 'Wochenüberblick')}
         ${check('d_f_bridge', d.features.bridge, 'Brückentag-Hinweise')}
         ${check('d_f_dogs', d.features.dogs, 'Hundekörbchen neben Julia (Hazel & Koko)')}
+        ${check('d_f_quotes', d.features.quotes, 'Zitat des Tages (Stromberg & The Office)')}
       </section>
       <section class="dev-sec">
         <h3>Zusatz-Status (Tisch grün/rot gestreift)</h3>
@@ -1261,6 +1301,7 @@ function devCollect() {
     overview: v('d_f_overview').checked,
     bridge: v('d_f_bridge').checked,
     dogs: v('d_f_dogs').checked,
+    quotes: v('d_f_quotes').checked,
   };
   DRAFT.pin = v('d_pin').value.trim() || '0552';
   DRAFT.whatsapp = v('d_whatsapp').value.trim();
