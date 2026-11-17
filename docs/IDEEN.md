@@ -9,3 +9,7 @@ Funktionen, die dafür sorgen, dass die App regelmäßig genutzt wird (Stand 17.
 5. **Tagesrunde** – wer heute mit Kaffee/Spülmaschine/Pflanzen dran ist (rotiert), Geburtstage, „Frage des Tages“ mit drei Antworten.
 
 Empfohlene Reihenfolge: 1 und 2 zuerst, dann 3.
+
+## Kleinere Wünsche
+
+- **Wochenkalender:** unter jedem farbigen Status-Punkt den Anfangsbuchstaben der Person anzeigen (J, M, L), damit man ohne Antippen sieht, wer welcher Punkt ist. (gemerkt 17.11.2026, noch nicht umgesetzt)
