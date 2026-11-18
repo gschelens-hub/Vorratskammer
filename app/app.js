@@ -131,19 +131,32 @@ function render() {
 
 // ---------- quote of the day ----------
 /** Same quote for everyone: counts working days since 5.1.2026, weekends keep Friday's quote. */
+/** Stable id of a quote (from its text), used to hide single quotes for good. */
+const quoteId = (z) => {
+  let h = 0;
+  for (const ch of z.lines.map((l) => l.text).join('|')) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return (h >>> 0).toString(36);
+};
+function activeQuotes() {
+  const hidden = new Set(state.cfg?.quotes?.hidden || []);
+  return ZITATE.filter((z) => !hidden.has(quoteId(z)));
+}
 function quoteOfDay(iso) {
+  const list = activeQuotes();
+  if (!list.length) return null;
   const epoch = '2026-01-05'; // a Monday
   const days = Math.max(0, diffDays(epoch, iso));
   const workdays = Math.floor(days / 7) * 5 + Math.min(days % 7, 4);
-  return ZITATE[workdays % ZITATE.length];
+  const offset = Number(state.cfg?.quotes?.offset) || 0; // "Nächstes Zitat" in the developer menu
+  return list[(((workdays + offset) % list.length) + list.length) % list.length];
 }
 function renderQuote() {
   const el = $('#quote');
   const t = state.today;
-  const show = state.cfg?.features?.quotes !== false && LS.get('552.quoteClosed') !== t && ZITATE.length > 0;
+  const z = quoteOfDay(t);
+  const show = state.cfg?.features?.quotes !== false && LS.get('552.quoteClosed') !== t && Boolean(z);
   el.hidden = !show;
   if (!show) return;
-  const z = quoteOfDay(t);
   const single = z.lines.length === 1;
   // stage directions like "(whispers)" are shown in italics and kept outside the quotation marks
   const dir = (t) => esc(t).replace(/\(([^)]+)\)/g, '<em class="quote-dir">($1)</em>');
@@ -1038,6 +1051,7 @@ const SPRUECHE_DEFAULT = ['Absolute Bubensahne', 'Wohlverdient!', 'Geil gemacht!
 const CFG_DEFAULT = {
   pin: '0552',
   kreditnext: { on: true, label: 'KreditNext', members: [] }, // members [] = everyone named Julia
+  quotes: { offset: 0, hidden: [] }, // quote of the day: skipped steps and quotes hidden for good
   whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
   features: { board: true, guests: true, overview: true, bridge: true, dogs: false, quotes: true },
@@ -1132,6 +1146,49 @@ let DRAFT = null;
 const check = (id, on, text) => `<label class="chk"><input type="checkbox" id="${id}"${on ? ' checked' : ''}> ${text}</label>`;
 const imgPreview = (src) => src || 'icon-512.png';
 
+// developer menu: skip or hide the quote of the day (saved immediately, for everyone)
+function devQuoteHtml() {
+  const z = quoteOfDay(state.today);
+  const hiddenCount = (state.cfg.quotes?.hidden || []).length;
+  const text = z ? z.lines.map((l) => (z.lines.length > 1 ? `${l.who.split(' ')[0]}: ` : '') + l.text).join(' / ') : 'Keine Zitate mehr übrig.';
+  const who = z ? (z.lines.length === 1 ? z.lines[0].who : [...new Set(z.lines.map((l) => l.who))].join(' & ')) : '';
+  return `<h3>Zitat des Tages</h3>
+    <blockquote class="dev-quote">${esc(text)}${who ? `<br><em>${esc(who)} – ${esc(z.source)}</em>` : ''}</blockquote>
+    <div class="actions left">
+      <button type="button" class="btn small" data-quote-next ${z ? '' : 'disabled'}>Nächstes Zitat</button>
+      <button type="button" class="btn small ghost danger" data-quote-hide ${z ? '' : 'disabled'}>Nie wieder zeigen</button>
+      ${hiddenCount ? `<button type="button" class="btn small ghost" data-quote-unhide>Alle ${hiddenCount} ausgeblendeten wieder einblenden</button>` : ''}
+    </div>
+    <p class="muted small">Gilt sofort für alle im Raum. ${activeQuotes().length} von ${ZITATE.length} Zitaten aktiv.</p>`;
+}
+function bindDevQuote(root) {
+  const sec = root.querySelector('#dev-quote');
+  const save = async (change, msg) => {
+    const quotes = { offset: 0, hidden: [], ...(state.cfg.quotes || {}) };
+    change(quotes);
+    const next = { ...state.cfg, quotes };
+    try {
+      await db.saveConfig(room(), next);
+      state.cfg = deepMerge(CFG_DEFAULT, next);
+      if (DRAFT) DRAFT.quotes = clone(quotes);
+      LS.set('552.cfg', JSON.stringify(state.cfg));
+      LS.set('552.quoteClosed', null); // show the new quote again on this device
+      renderQuote();
+      sec.innerHTML = devQuoteHtml();
+      bindDevQuote(root);
+      toast(msg);
+    } catch (err) {
+      toast('Nicht gespeichert: ' + err.message);
+    }
+  };
+  sec.querySelector('[data-quote-next]')?.addEventListener('click', () => save((q) => (q.offset = (Number(q.offset) || 0) + 1), 'Nächstes Zitat'));
+  sec.querySelector('[data-quote-hide]')?.addEventListener('click', () => {
+    const z = quoteOfDay(state.today);
+    if (z) save((q) => (q.hidden = [...new Set([...(q.hidden || []), quoteId(z)])]), 'Zitat ausgeblendet');
+  });
+  sec.querySelector('[data-quote-unhide]')?.addEventListener('click', () => save((q) => (q.hidden = []), 'Alle Zitate wieder aktiv'));
+}
+
 function openDev() {
   DRAFT = clone(state.cfg);
   renderDev();
@@ -1159,6 +1216,7 @@ function renderDev() {
   openSheet(
     `<header class="sheet-head"><h2>Entwicklermenü</h2><p>Gilt für alle im Raum <strong>${esc(room())}</strong></p></header>
     <div class="dev">
+      <section class="dev-sec" id="dev-quote">${devQuoteHtml()}</section>
       ${stoerer(
         'start',
         'Start-Störer',
@@ -1267,6 +1325,7 @@ function renderDev() {
         }),
       );
       root.querySelector('[data-log]').addEventListener('click', openLog);
+      bindDevQuote(root);
       root.querySelector('[data-export]').addEventListener('click', () => {
         devCollect();
         const a = document.createElement('a');
@@ -1440,7 +1499,7 @@ function describeLog(e, nameOf) {
     case 'z552_roomconfig': {
       const a = o.config || {};
       const b = n.config || {};
-      const names = { start: 'Start-Störer', vac: 'Urlaubs-Störer', features: 'Funktionen', theme: 'Design', pin: 'PIN', whatsapp: 'WhatsApp-Link', kreditnext: 'Zusatz-Status' };
+      const names = { start: 'Start-Störer', vac: 'Urlaubs-Störer', features: 'Funktionen', theme: 'Design', pin: 'PIN', whatsapp: 'WhatsApp-Link', kreditnext: 'Zusatz-Status', quotes: 'Zitat des Tages' };
       const changed = Object.keys({ ...a, ...b })
         .filter((k) => names[k] && JSON.stringify(a[k]) !== JSON.stringify(b[k]))
         .map((k) => names[k]);

@@ -1958,3 +1958,17 @@ main {
   color: var(--muted);
   font-style: italic;
 }
+
+.dev-quote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--red);
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.dev-quote em {
+  color: var(--muted);
+  font-size: 12.5px;
+}
