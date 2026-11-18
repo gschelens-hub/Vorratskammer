@@ -444,7 +444,7 @@ function renderOverview() {
   const anyGhost = days.some(empty);
   const head = days
     .map(
-      (iso, i) => `<th scope="col">${empty(iso) ? `<span class="ghost" style="--d:${(i * 0.37).toFixed(2)}s" title="Keiner im Büro – hier spukt's">${GHOST_SVG}</span>` : ''}<button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`,
+      (iso, i) => `<th scope="col">${empty(iso) ? `<span class="ghost" style="--d:${(-i * 1.3).toFixed(2)}s;--rows:${people.length}" title="Keiner im Büro – hier spukt's">${GHOST_SVG}</span>` : ''}<button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`,
     )
     .join('');
   const rows = people

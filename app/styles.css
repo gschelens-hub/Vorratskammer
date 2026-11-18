@@ -1973,21 +1973,28 @@ main {
   font-size: 12.5px;
 }
 
-/* ghost over days without anybody in the office */
+/* ghost over days without anybody in the office: flies over the yellow/red fields, sometimes behind them */
+.matrix {
+  isolation: isolate;
+}
 .matrix.has-ghost thead th {
-  padding-top: 34px;
   position: relative;
 }
+.matrix .cell {
+  position: relative;
+  z-index: 2;
+}
 .ghost {
+  --travel: calc(var(--rows, 3) * 24px + 6px);
   position: absolute;
   left: 50%;
-  top: 0;
+  top: -10px;
   margin-left: -13px;
+  z-index: 3;
   line-height: 0;
-  pointer-events: auto;
   cursor: default;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.25));
-  animation: ghost-float 2.8s ease-in-out infinite, ghost-sway 4.6s ease-in-out infinite;
+  animation: ghost-haunt 7s ease-in-out infinite, ghost-sway 2.6s ease-in-out infinite;
   animation-delay: var(--d, 0s);
 }
 .ghost svg {
@@ -1997,26 +2004,51 @@ main {
   transform-box: fill-box;
   transform-origin: center;
   animation: blink 4s infinite;
-  animation-delay: var(--d, 0s);
 }
-@keyframes ghost-float {
+@keyframes ghost-haunt {
   0%,
   100% {
-    translate: 0 2px;
-    opacity: 0.85;
+    translate: 0 0;
+    z-index: 3;
+    opacity: 0.95;
   }
-  50% {
-    translate: 0 -5px;
+  18% {
+    translate: 7px calc(var(--travel) * 0.45);
+    z-index: 3;
+  }
+  32% {
+    translate: -5px var(--travel);
+    z-index: 3;
     opacity: 1;
+  }
+  /* dive behind the fields and peek through the gaps */
+  40% {
+    translate: -7px calc(var(--travel) + 4px);
+    z-index: 0;
+    opacity: 0.8;
+  }
+  58% {
+    translate: 6px calc(var(--travel) * 0.55);
+    z-index: 0;
+    opacity: 0.8;
+  }
+  66% {
+    translate: 2px calc(var(--travel) * 0.35);
+    z-index: 3;
+    opacity: 1;
+  }
+  84% {
+    translate: -4px calc(var(--travel) * 0.12);
+    z-index: 3;
   }
 }
 @keyframes ghost-sway {
   0%,
   100% {
-    rotate: -8deg;
+    rotate: -9deg;
   }
   50% {
-    rotate: 8deg;
+    rotate: 9deg;
   }
 }
 @media (prefers-reduced-motion: reduce) {
