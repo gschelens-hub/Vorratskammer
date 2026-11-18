@@ -1,18 +1,12 @@
 # 552 – Ideen für später
 
-Funktionen, die dafür sorgen, dass die App regelmäßig genutzt wird (Stand 17.11.2026).
+## Zurückgestellt
 
-1. **Morgen-Erinnerung (Push)** – werktags 8:30 „Bist du heute im Büro?“, Antwort direkt aus der Mitteilung. Service Worker ist vorbereitet; iPhone nur als installierte Home-Bildschirm-App.
-2. **„Wer kommt mit?“** – Knopf für Mittag/Kaffee („🍝 12:30“, „☕ jetzt“), andere tippen „Bin dabei“, Symbol am Tisch.
-3. **Hunde-Barometer** – Hund im Körbchen streicheln (Herzchen), Wochenzähler „Hazel 3×, Koko 2×“, freitags „Liebling der Woche“.
-4. **Büro-Serie & Wochen-Abzeichen** – Status vor 9 Uhr eingetragen → Serie („🔥 12 Tage“), freitags Abzeichen wie „Frühaufsteher“, „Homeoffice-Legende“.
-5. **Tagesrunde** – wer heute mit Kaffee/Spülmaschine/Pflanzen dran ist (rotiert), Geburtstage, „Frage des Tages“ mit drei Antworten.
+- **Morgen-Erinnerung (Push)** – werktags 8:30 „Bist du heute im Büro?“, Antwort direkt aus der Mitteilung. Der Service Worker ist dafür vorbereitet; auf dem iPhone nur, wenn die App auf dem Home-Bildschirm installiert ist. Braucht einmalig Schlüssel für die Mitteilungen und einen zeitgesteuerten Versand.
 
-Empfohlene Reihenfolge: 1 und 2 zuerst, dann 3.
+## Erledigt (v12, 18.11.2026)
 
-## Kleinere Wünsche
-
-- **Wochenkalender:** unter jedem farbigen Status-Punkt den Anfangsbuchstaben der Person anzeigen (J, M, L), damit man ohne Antippen sieht, wer welcher Punkt ist. (gemerkt 17.11.2026, noch nicht umgesetzt)
-- **Wochenkalender, Hund:** unter Punkten und Buchstaben eine kleine Pfote 🐾 an Tagen, an denen ein Hund im Körbchen ist (nur wenn das Hundekörbchen eingeschaltet ist). (gemerkt 17.11.2026, noch nicht umgesetzt)
-- **Zitate ohne Zensur:** Die beim ersten Durchgang aussortierten derben Zitate wieder aufnehmen: 34 von The Office und der fünfte Stromberg-Spruch („marokkanischer Bewerber“). Dann etwa 125 Zitate statt 90. Ausnahme: nur Zitate weglassen, die ohne die Szene unverständlich sind. Quelle wie gehabt: Wikiquote, Staffel-Seiten von The Office (US) und die Stromberg-Seite. (gemerkt 17.11.2026, noch nicht umgesetzt)
-- **Logbuch im Entwicklermenü:** alle Eingaben der letzten 90 Tage nachvollziehen: wer hat wann was geändert (Status, Notiz, Planung, Pinnwand, Gastplatz, Hund, Mitglieder, Einstellungen), mit altem und neuem Wert. Umsetzungsidee: eigene Tabelle `z552_log` in Supabase, Einträge per Datenbank-Trigger (fängt jede Änderung, auch von älteren App-Versionen), automatische Löschung nach 90 Tagen; im Entwicklermenü Liste mit Filter nach Person/Art und Suche. (gemerkt 17.11.2026, noch nicht umgesetzt)
+- Wochenkalender: Anfangsbuchstaben unter den Status-Punkten.
+- Wochenkalender: Pfote an Tagen mit Hund im Körbchen.
+- Zitate ohne Zensur: 125 statt 90 Zitate.
+- Logbuch im Entwicklermenü (90 Tage, Filter nach Person und Art, Suche) – braucht `supabase/update-v6.sql`.

@@ -34,12 +34,25 @@ export class DbError extends Error {}
 
 // ---------------- Supabase ----------------
 let client = null;
+let actorId = null;
+/** Who is signed in on this device; sent along with every change so the log shows a name. */
+export function setActor(id) {
+  actorId = id || null;
+}
 function sb() {
   if (client) return client;
   if (!(window.supabase && window.supabase.createClient)) {
     throw new DbError('Die Datenbank-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und neu laden.');
   }
-  client = window.supabase.createClient(SB_URL, SB_KEY);
+  // Every database request tells the server who is signed in on this device (for the change log).
+  const withActor = (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (!actorId || !url.includes('/rest/v1/')) return fetch(input, init);
+    const headers = new Headers(init.headers || (typeof input === 'string' ? undefined : input.headers));
+    headers.set('x-552-member', actorId);
+    return fetch(input, { ...init, headers });
+  };
+  client = window.supabase.createClient(SB_URL, SB_KEY, { global: { fetch: withActor } });
   return client;
 }
 
@@ -101,6 +114,17 @@ const live = {
   addNote: (room, note) => q(sb().from('z552_board').insert({ ...note, room_id: room })),
   deleteNote: (room, id) => q(sb().from('z552_board').delete().eq('id', id).eq('room_id', room)),
 
+  async getLog(room, since) {
+    const { data, error } = await sb()
+      .from('z552_log')
+      .select('*')
+      .eq('room_id', room)
+      .gte('at', since)
+      .order('at', { ascending: false })
+      .limit(3000);
+    if (error) throw new DbError('Das Logbuch ist noch nicht eingerichtet (update-v6.sql in Supabase ausführen).');
+    return data || [];
+  },
   setDog(room, date, dog) {
     if (!dog) return q(sb().from('z552_dogs').delete().eq('room_id', room).eq('date', date));
     return q(sb().from('z552_dogs').upsert({ room_id: room, date, dog, updated_at: new Date().toISOString() }, { onConflict: 'room_id,date' }));
@@ -152,9 +176,41 @@ function demoDb() {
 function demoSave(d) {
   LS.set('552.demoDb', JSON.stringify(d));
 }
+// Demo change log: compares the store before and after each change, like the database trigger does.
+const DEMO_KEYS = {
+  z552_members: ['members', (x) => x.id],
+  z552_plans: ['plans', (x) => x.id],
+  z552_overrides: ['overrides', (x) => x.member_id + x.date],
+  z552_guests: ['guests', (x) => x.room_id + x.date + x.desk],
+  z552_board: ['board', (x) => x.id],
+  z552_dogs: ['dogs', (x) => x.room_id + x.date],
+};
 function demoMutate(fn) {
   const d = demoDb();
+  const before = JSON.parse(JSON.stringify(d));
   fn(d);
+  const at = new Date().toISOString();
+  const actor = d.members.find((m) => m.id === actorId);
+  const log = (d.log = d.log || []);
+  const add = (tbl, op, o, n) =>
+    log.push({ id: log.length + 1, room_id: (n || o).room_id, at, actor_id: actorId, actor_name: actor?.name || null, tbl, op, old_row: o || null, new_row: n || null });
+  for (const [tbl, [key, id]] of Object.entries(DEMO_KEYS)) {
+    const a = new Map((before[key] || []).map((x) => [id(x), x]));
+    const b = new Map((d[key] || []).map((x) => [id(x), x]));
+    for (const [k, n] of b) {
+      const o = a.get(k);
+      if (!o) add(tbl, 'INSERT', null, n);
+      else if (JSON.stringify({ ...o, last_seen: 0, updated_at: 0 }) !== JSON.stringify({ ...n, last_seen: 0, updated_at: 0 })) add(tbl, 'UPDATE', o, n);
+    }
+    for (const [k, o] of a) if (!b.has(k)) add(tbl, 'DELETE', o, null);
+  }
+  for (const room of Object.keys(d.config || {})) {
+    const o = before.config?.[room];
+    const n = d.config[room];
+    if (JSON.stringify(o) !== JSON.stringify(n)) add('z552_roomconfig', o ? 'UPDATE' : 'INSERT', o ? { room_id: room, config: o } : null, { room_id: room, config: n });
+  }
+  const cutoff = new Date(Date.now() - 90 * 86400000).toISOString();
+  d.log = log.filter((e) => e.at >= cutoff);
   demoSave(d);
   demoListeners.forEach((l) => l());
 }
@@ -251,6 +307,10 @@ const demo = {
       if (dog) d.dogs.push({ room_id: room, date, dog });
     }),
   getConfig: async (room) => demoDb().config?.[room] || null,
+  getLog: async (room, since) =>
+    (demoDb().log || [])
+      .filter((e) => e.room_id === room && e.at >= since)
+      .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id),
   saveConfig: async (room, config) =>
     demoMutate((d) => {
       d.config = d.config || {};

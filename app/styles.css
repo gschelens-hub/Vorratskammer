@@ -1857,3 +1857,104 @@ main {
   background: var(--bg);
   color: var(--ink);
 }
+
+/* week bar: initials under the dots, paw on dog days */
+.cal-dots {
+  gap: 4px;
+}
+.cal-person {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 9px;
+}
+.cal-person b {
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+}
+.cal-paw {
+  display: block;
+  color: #8a5a2c;
+  line-height: 0;
+  margin-top: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .cal-paw {
+    color: #d29b62;
+  }
+}
+:root[data-theme='dark'] .cal-paw {
+  color: #d29b62;
+}
+
+/* ---------- change log ---------- */
+.log-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 6px;
+}
+@media (max-width: 480px) {
+  .log-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .log-filters input {
+    grid-column: 1 / -1;
+  }
+}
+.log-filters select,
+.log-filters input {
+  padding: 7px 9px;
+  font-size: 14px;
+}
+.log-count {
+  margin: 8px 0 4px;
+}
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.log-day {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 14px 0 4px;
+}
+.log-row {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.log-time {
+  flex: none;
+  width: 42px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  padding-top: 1px;
+}
+.log-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.log-what {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.log-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quote-dir {
+  color: var(--muted);
+  font-style: italic;
+}

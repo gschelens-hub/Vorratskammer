@@ -1,7 +1,7 @@
 // 552 – Zimmer-App
 import { BASKET, basketSvg, DOGS, dogPreviewSvg } from './dogs.js';
 import { ZITATE } from './zitate.js';
-import { db, DbError, isDemo, LS, newMemberId, newRoomCode } from './data.js';
+import { db, DbError, isDemo, LS, newMemberId, newRoomCode, setActor } from './data.js';
 import {
   addDays,
   diffDays,
@@ -49,6 +49,7 @@ function readSession() {
 }
 function saveSession() {
   LS.set('552.session', state.session ? JSON.stringify(state.session) : null);
+  setActor(state.session?.memberId);
 }
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -144,12 +145,16 @@ function renderQuote() {
   if (!show) return;
   const z = quoteOfDay(t);
   const single = z.lines.length === 1;
+  // stage directions like "(whispers)" are shown in italics and kept outside the quotation marks
+  const dir = (t) => esc(t).replace(/\(([^)]+)\)/g, '<em class="quote-dir">($1)</em>');
   const body = z.lines
-    .map((l) =>
-      single
-        ? `<p class="quote-text">„${esc(l.text.replace(/„/g, '‚').replace(/“/g, '‘'))}“</p>`
-        : `<p class="quote-text"><strong>${esc(l.who.split(' ')[0])}:</strong> ${esc(l.text)}</p>`,
-    )
+    .map((l) => {
+      if (!single) return `<p class="quote-text"><strong>${esc(l.who.split(' ')[0])}:</strong> ${dir(l.text)}</p>`;
+      const m = l.text.match(/^\(([^)]+)\)\s*(.*)$/s);
+      const lead = m ? `<em class="quote-dir">(${esc(m[1])})</em> ` : '';
+      const rest = (m ? m[2] : l.text).replace(/„/g, '‚').replace(/“/g, '‘');
+      return `<p class="quote-text">${lead}„${dir(rest)}“</p>`;
+    })
     .join('');
   const who = single ? z.lines[0].who : [...new Set(z.lines.map((l) => l.who))].join(' & ');
   el.innerHTML = `<div class="quote-body">${body}<p class="quote-src"><em>${esc(who)} – ${esc(z.source)}</em></p></div>
@@ -176,25 +181,44 @@ function renderWeekbar() {
   $('#cal-today').hidden = days.includes(state.today);
 
   const people = state.data.members;
+  const initials = memberInitials(people);
+  const dogsOn = state.cfg?.features?.dogs === true;
   $('#cal-days').innerHTML = days
     .map((iso, i) => {
       const hol = holidayName(iso);
       const dots = people
         .map((p) => {
           const s = dayInfo(p.id, iso).status;
-          return `<i class="dot" ${stAttr(s)} title="${esc(p.name)}: ${STATUSES[s].label}"></i>`;
+          return `<span class="cal-person" title="${esc(p.name)}: ${STATUSES[s].label}"><i class="dot" ${stAttr(s)}></i><b>${esc(initials[p.id])}</b></span>`;
         })
         .join('');
+      const dog = dogsOn ? dogOn(iso) : null;
+      const paw = dog ? `<span class="cal-paw" title="${esc(DOGS[dog].name)} ist da">${PAW_SVG}</span>` : '';
       return `<button class="cal-day${iso === state.today ? ' is-today' : ''}${hol ? ' is-holiday' : ''}" data-day="${i}" role="tab" aria-selected="${iso === state.selected}" aria-label="${WEEKDAYS_LONG[i]} ${formatShort(iso)}${hol ? ', ' + esc(hol) : ''}">
         <span class="cal-wd">${WEEKDAYS_SHORT[i]}</span>
         <span class="cal-num">${fromISO(iso).getUTCDate()}</span>
         <span class="cal-dots">${dots}</span>
+        ${paw}
         ${hol ? `<span class="cal-tag">${esc(hol)}</span>` : isBridgeDay(iso) ? '<span class="cal-tag bridge">Brückentag</span>' : ''}
       </button>`;
     })
     .join('');
   moveSlider(Math.max(0, days.indexOf(state.selected)));
 }
+
+/** Initials for the week bar: first letter, or more letters if two people share it. */
+function memberInitials(people) {
+  const out = {};
+  for (const p of people) {
+    const name = (p.name || '?').trim();
+    let n = 1;
+    while (n < name.length && people.some((o) => o.id !== p.id && (o.name || '').trim().slice(0, n).toLowerCase() === name.slice(0, n).toLowerCase())) n++;
+    out[p.id] = name.slice(0, n).toUpperCase().slice(0, 1) + name.slice(1, n).toLowerCase();
+  }
+  return out;
+}
+const PAW_SVG =
+  '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><g fill="currentColor"><ellipse cx="12" cy="16.2" rx="5.2" ry="4.3"/><ellipse cx="5.4" cy="10.6" rx="2.2" ry="2.8"/><ellipse cx="9.4" cy="6.4" rx="2.2" ry="2.9"/><ellipse cx="14.6" cy="6.4" rx="2.2" ry="2.9"/><ellipse cx="18.6" cy="10.6" rx="2.2" ry="2.8"/></g></svg>';
 
 function moveSlider(index, px = null) {
   const slider = $('#cal-slider');
@@ -1196,6 +1220,7 @@ function renderDev() {
       <section class="dev-sec">
         <h3>Wartung</h3>
         <div class="actions left">
+          <button type="button" class="btn small" data-log>Logbuch (90 Tage)</button>
           <button type="button" class="btn small" data-export>Export (JSON)</button>
           <label class="btn small">Import (JSON)<input type="file" accept="application/json,.json" data-import hidden></label>
           <button type="button" class="btn small" data-cache>Cache leeren und neu laden</button>
@@ -1241,6 +1266,7 @@ function renderDev() {
           renderDev();
         }),
       );
+      root.querySelector('[data-log]').addEventListener('click', openLog);
       root.querySelector('[data-export]').addEventListener('click', () => {
         devCollect();
         const a = document.createElement('a');
@@ -1349,6 +1375,152 @@ async function devSave() {
   } catch (err) {
     toast('Nicht gespeichert: ' + err.message);
   }
+}
+
+// ---------- change log (developer menu) ----------
+const LOG_TYPES = {
+  z552_overrides: 'Status & Notiz',
+  z552_plans: 'Planung',
+  z552_board: 'Pinnwand',
+  z552_guests: 'Gastplatz',
+  z552_dogs: 'Hundekörbchen',
+  z552_members: 'Mitglieder',
+  z552_roomconfig: 'Einstellungen',
+};
+const fmtDay = (iso) => (iso ? `${WEEKDAYS_SHORT[weekday(iso.slice(0, 10))]} ${formatShort(iso.slice(0, 10))}` : '');
+const statusLabel = (s) => (s ? STATUSES[s]?.label || s : '—');
+
+function describeLog(e, nameOf) {
+  const o = e.old_row || {};
+  const n = e.new_row || {};
+  const r = e.op === 'DELETE' ? o : n;
+  switch (e.tbl) {
+    case 'z552_overrides': {
+      const who = nameOf(r.member_id);
+      if (e.op === 'DELETE') return `${who}, ${fmtDay(o.date)}: auf Planung zurückgesetzt`;
+      const parts = [];
+      if ((o.status || null) !== (n.status || null)) parts.push(`Status ${statusLabel(o.status)} → ${statusLabel(n.status)}`);
+      if ((o.note || '') !== (n.note || '')) parts.push(n.note ? `Notiz „${n.note}“` : 'Notiz gelöscht');
+      return `${who}, ${fmtDay(r.date)}: ${parts.join(', ') || 'geändert'}`;
+    }
+    case 'z552_plans': {
+      const verb = { INSERT: 'angelegt', UPDATE: 'geändert', DELETE: 'gelöscht' }[e.op];
+      let what = '';
+      try {
+        what = describePlan(r);
+      } catch {
+        what = r.kind || '';
+      }
+      return `${nameOf(r.member_id)}: ${KIND_LABEL[r.kind] || 'Eintrag'} ${verb}${r.note ? ` („${r.note}“)` : ''} – ${what}`;
+    }
+    case 'z552_board': {
+      const title = (r.title || '').trim() || (r.text || '').trim().split('\n')[0].slice(0, 40);
+      if (e.op === 'INSERT') return `Notiz angepinnt: „${title}“`;
+      if (e.op === 'DELETE') return `Notiz abgenommen: „${title}“`;
+      return `Notiz geändert: „${title}“`;
+    }
+    case 'z552_guests': {
+      const desk = DESKS.find((d) => d.id === r.desk)?.label || r.desk;
+      if (e.op === 'DELETE') return `Gastplatz ${desk}, ${fmtDay(o.date)}: Reservierung für ${o.guest_name} aufgehoben`;
+      return `Gastplatz ${desk}, ${fmtDay(n.date)}: reserviert für ${n.guest_name}`;
+    }
+    case 'z552_dogs': {
+      if (e.op === 'DELETE') return `Hundekörbchen, ${fmtDay(o.date)}: geleert (vorher ${DOGS[o.dog]?.name || o.dog})`;
+      return `Hundekörbchen, ${fmtDay(n.date)}: ${DOGS[n.dog]?.name || n.dog} liegt drin`;
+    }
+    case 'z552_members': {
+      const deskLabel = (id) => DESKS.find((d) => d.id === id)?.label || 'kein Tisch';
+      if (e.op === 'INSERT') return `${n.name} hinzugefügt${n.desk ? ` (Tisch ${deskLabel(n.desk)})` : ''}`;
+      if (e.op === 'DELETE') return `${o.name} entfernt`;
+      const parts = [];
+      if (o.name !== n.name) parts.push(`Name ${o.name} → ${n.name}`);
+      if ((o.desk || null) !== (n.desk || null)) parts.push(`Tisch ${deskLabel(o.desk)} → ${deskLabel(n.desk)}`);
+      return `${n.name}: ${parts.join(', ') || 'geändert'}`;
+    }
+    case 'z552_roomconfig': {
+      const a = o.config || {};
+      const b = n.config || {};
+      const names = { start: 'Start-Störer', vac: 'Urlaubs-Störer', features: 'Funktionen', theme: 'Design', pin: 'PIN', whatsapp: 'WhatsApp-Link', kreditnext: 'Zusatz-Status' };
+      const changed = Object.keys({ ...a, ...b })
+        .filter((k) => names[k] && JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+        .map((k) => names[k]);
+      return `Entwicklermenü gespeichert${changed.length ? `: ${changed.join(', ')}` : ''}`;
+    }
+    default:
+      return `${e.tbl} ${e.op}`;
+  }
+}
+
+async function openLog() {
+  const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  openSheet('<header class="sheet-head"><h2>Logbuch</h2><p>Wird geladen …</p></header>', () => $('#sheet').classList.add('wide'));
+  let entries = [];
+  try {
+    entries = await db.getLog(room(), since);
+  } catch (err) {
+    openSheet(
+      `<header class="sheet-head"><h2>Logbuch</h2></header><p class="warn">${esc(err.message)}</p>
+       <div class="actions"><button type="button" class="btn" data-back>Zurück zum Entwicklermenü</button></div>`,
+      (root) => {
+        $('#sheet').classList.add('wide');
+        root.querySelector('[data-back]').addEventListener('click', openDev);
+      },
+    );
+    return;
+  }
+  // names of people, also of people who have since been removed
+  const names = new Map(state.data.members.map((m) => [m.id, m.name]));
+  for (const e of entries) if (e.tbl === 'z552_members') for (const r of [e.old_row, e.new_row]) if (r?.id && !names.has(r.id)) names.set(r.id, r.name);
+  const nameOf = (id) => names.get(id) || 'Unbekannt';
+  const rows = entries.map((e) => ({ e, text: describeLog(e, nameOf), actor: e.actor_name || (e.actor_id && names.get(e.actor_id)) || 'unbekannt' }));
+  const actors = [...new Set(rows.map((r) => r.actor))].sort();
+  const filter = { actor: '', tbl: '', q: '' };
+
+  const draw = (root) => {
+    const q = filter.q.trim().toLowerCase();
+    const list = rows.filter(
+      (r) => (!filter.actor || r.actor === filter.actor) && (!filter.tbl || r.e.tbl === filter.tbl) && (!q || (r.text + ' ' + r.actor).toLowerCase().includes(q)),
+    );
+    let lastDay = '';
+    const html = list
+      .slice(0, 500)
+      .map((r) => {
+        const d = new Date(r.e.at);
+        const day = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Berlin' });
+        const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+        const head = day !== lastDay ? `<li class="log-day">${esc(day)}</li>` : '';
+        lastDay = day;
+        return `${head}<li class="log-row"><span class="log-time">${time}</span><span class="log-main"><span class="log-what">${esc(r.text)}</span>
+          <span class="log-meta">${esc(r.actor)} · ${esc(LOG_TYPES[r.e.tbl] || r.e.tbl)}</span></span></li>`;
+      })
+      .join('');
+    root.querySelector('.log-count').textContent = `${list.length} ${list.length === 1 ? 'Eintrag' : 'Einträge'}${list.length > 500 ? ' (die neuesten 500 angezeigt)' : ''}`;
+    root.querySelector('.log-list').innerHTML = html || '<li class="empty">Keine Einträge.</li>';
+  };
+
+  openSheet(
+    `<header class="sheet-head"><h2>Logbuch</h2><p>Alle Änderungen der letzten 90 Tage im Raum <strong>${esc(room())}</strong></p></header>
+     <div class="log-filters">
+       <select data-f="actor" aria-label="Person"><option value="">Alle Personen</option>${actors.map((a) => `<option>${esc(a)}</option>`).join('')}</select>
+       <select data-f="tbl" aria-label="Art"><option value="">Alle Arten</option>${Object.entries(LOG_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+       <input data-f="q" type="search" placeholder="Suchen …" aria-label="Suchen">
+     </div>
+     <p class="muted small log-count"></p>
+     <ul class="log-list"></ul>
+     <div class="actions sticky-actions"><button type="button" class="btn ghost" data-back>Zurück zum Entwicklermenü</button><button type="button" class="btn primary" data-close>Schließen</button></div>`,
+    (root) => {
+      $('#sheet').classList.add('wide');
+      root.querySelectorAll('[data-f]').forEach((el) =>
+        el.addEventListener('input', () => {
+          filter[el.dataset.f] = el.value;
+          draw(root);
+        }),
+      );
+      root.querySelector('[data-back]').addEventListener('click', openDev);
+      root.querySelector('[data-close]').addEventListener('click', closeSheet);
+      draw(root);
+    },
+  );
 }
 
 // ---------- Störer ----------
@@ -1747,6 +1919,7 @@ fetch('version.txt', { cache: 'no-store' })
   .catch(() => {});
 state.cfg = deepMerge(CFG_DEFAULT, cachedConfig() || {});
 applyConfig();
+setActor(state.session?.memberId);
 renderFurniture();
 bind();
 registerSW();
