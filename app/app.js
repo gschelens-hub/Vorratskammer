@@ -219,6 +219,13 @@ function renderWeekbar() {
   moveSlider(Math.max(0, days.indexOf(state.selected)));
 }
 
+const GHOST_SVG = `<svg viewBox="0 0 40 46" width="26" height="30" aria-hidden="true">
+  <path d="M20 2C10 2 4 10 4 20v22l5-4 5 4 6-4 6 4 5-4 5 4V20C36 10 30 2 20 2Z" fill="#fff" stroke="#cfd3da" stroke-width="1.5"/>
+  <ellipse class="ghost-eye" cx="14.5" cy="19" rx="2.6" ry="3.4" fill="#2b2e33"/><ellipse class="ghost-eye" cx="25.5" cy="19" rx="2.6" ry="3.4" fill="#2b2e33"/>
+  <ellipse cx="20" cy="28" rx="3" ry="3.6" fill="#2b2e33"/>
+  <ellipse cx="10" cy="25" rx="2.4" ry="1.4" fill="#ffb3c1" opacity=".8"/><ellipse cx="30" cy="25" rx="2.4" ry="1.4" fill="#ffb3c1" opacity=".8"/>
+</svg>`;
+
 /** Initials for the week bar: first letter, or more letters if two people share it. */
 function memberInitials(people) {
   const out = {};
@@ -432,8 +439,13 @@ function renderOverview() {
     }
   }
 
+  // nobody in the office (everyone mobile / away / KreditNext, nobody still open) -> a little ghost haunts that day
+  const empty = (iso) => people.length > 0 && people.every((p) => ['mobile', 'away', 'kreditnext'].includes(statusOf(p.id, iso)));
+  const anyGhost = days.some(empty);
   const head = days
-    .map((iso) => `<th scope="col"><button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`)
+    .map(
+      (iso, i) => `<th scope="col">${empty(iso) ? `<span class="ghost" style="--d:${(i * 0.37).toFixed(2)}s" title="Keiner im Büro – hier spukt's">${GHOST_SVG}</span>` : ''}<button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`,
+    )
     .join('');
   const rows = people
     .map((p) => {
@@ -452,7 +464,7 @@ function renderOverview() {
   $('#overview').innerHTML = `
     <h3>Wochenüberblick</h3>
     <p class="summary">${esc(summary)}</p>
-    <table class="matrix">
+    <table class="matrix${anyGhost ? ' has-ghost' : ''}">
       <thead><tr><th></th>${head}<th class="count" title="Bürotage">Büro</th></tr></thead>
       <tbody>${rows}<tr class="total"><th scope="row">im Büro</th>${counts}<td></td></tr></tbody>
     </table>
