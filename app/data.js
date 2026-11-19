@@ -65,6 +65,21 @@ async function q(promise) {
   return data;
 }
 
+/**
+ * Until update-v7.sql has been run, the columns for split days do not exist yet.
+ * Whole-day entries are then saved without them; split days get a clear message.
+ */
+async function withoutNewColumn(column, row, save) {
+  try {
+    return await save(row);
+  } catch (err) {
+    if (!String(err.message).includes(column)) throw err;
+    if (row[column]) throw new DbError('Geteilte Tage gehen erst nach dem Supabase-Update v7 (update-v7.sql).');
+    const { [column]: _drop, ...rest } = row;
+    return save(rest);
+  }
+}
+
 const live = {
   async findRoom(code) {
     const rows = await q(sb().from('z552_rooms').select('*').eq('code', code).limit(1));
@@ -100,15 +115,18 @@ const live = {
   },
 
   setOverride: (room, row) =>
-    q(sb().from('z552_overrides').upsert({ ...row, room_id: room, updated_at: new Date().toISOString() }, { onConflict: 'member_id,date' })),
+    withoutNewColumn('status_pm', row, (r) =>
+      q(sb().from('z552_overrides').upsert({ ...r, room_id: room, updated_at: new Date().toISOString() }, { onConflict: 'member_id,date' })),
+    ),
   clearOverride: (room, memberId, date) =>
     q(sb().from('z552_overrides').delete().eq('room_id', room).eq('member_id', memberId).eq('date', date)),
   setGuest: (room, row) => q(sb().from('z552_guests').upsert({ ...row, room_id: room }, { onConflict: 'room_id,date,desk' })),
   clearGuest: (room, date, desk) => q(sb().from('z552_guests').delete().eq('room_id', room).eq('date', date).eq('desk', desk)),
   savePlan(room, plan) {
     const { id, ...row } = plan;
-    if (id) return q(sb().from('z552_plans').update(row).eq('id', id).eq('room_id', room));
-    return q(sb().from('z552_plans').insert({ ...row, room_id: room }));
+    return withoutNewColumn('half', row, (r) =>
+      id ? q(sb().from('z552_plans').update(r).eq('id', id).eq('room_id', room)) : q(sb().from('z552_plans').insert({ ...r, room_id: room })),
+    );
   },
   deletePlan: (room, id) => q(sb().from('z552_plans').delete().eq('id', id).eq('room_id', room)),
   addNote: (room, note) => q(sb().from('z552_board').insert({ ...note, room_id: room })),

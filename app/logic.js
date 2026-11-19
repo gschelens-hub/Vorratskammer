@@ -195,31 +195,63 @@ export function planMatches(plan, iso) {
   return iso >= plan.start_date && iso <= end;
 }
 
-/** The status the plans alone would give (no day override). */
-export function planned(personId, iso, plans) {
-  const mine = plans.filter((p) => p.member_id === personId && planMatches(p, iso));
-  const byNewest = (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''));
-  const fixed = mine.filter((p) => p.kind !== 'recurring').sort(byNewest)[0];
+/** Does a plan cover this half of the day? (plan.half: null = whole day, 'am' = morning, 'pm' = afternoon) */
+const coversHalf = (plan, half) => !plan.half || plan.half === half;
+
+/** The status the plans alone give for one half of the day ('am' or 'pm'). */
+export function plannedHalf(personId, iso, plans, half) {
+  const mine = plans.filter((p) => p.member_id === personId && coversHalf(p, half) && planMatches(p, iso));
+  // half-specific entries beat whole-day ones of the same kind, otherwise the newest wins
+  const order = (a, b) => (b.half ? 1 : 0) - (a.half ? 1 : 0) || String(b.created_at || '').localeCompare(String(a.created_at || ''));
+  const fixed = mine.filter((p) => p.kind !== 'recurring').sort(order)[0];
   if (fixed) return { status: fixed.status, note: fixed.note || '', source: 'plan', plan: fixed };
-  const rec = mine.filter((p) => p.kind === 'recurring').sort(byNewest)[0];
+  const rec = mine.filter((p) => p.kind === 'recurring').sort(order)[0];
   if (rec) return { status: rec.status, note: rec.note || '', source: 'turnus', plan: rec };
   const holiday = holidayName(iso);
   if (holiday) return { status: 'away', note: holiday, source: 'holiday' };
   return { status: 'unknown', note: '', source: 'default' };
 }
 
-/** Final status shown on the main page. */
+/** The status the plans alone would give (no day override); status = morning, statusPm = afternoon. */
+export function planned(personId, iso, plans) {
+  const am = plannedHalf(personId, iso, plans, 'am');
+  const pm = plannedHalf(personId, iso, plans, 'pm');
+  const lead = am.source !== 'default' ? am : pm;
+  return {
+    status: am.status,
+    statusPm: pm.status,
+    split: am.status !== pm.status,
+    note: am.note || pm.note,
+    source: lead.source,
+    plan: lead.plan,
+  };
+}
+
+/**
+ * Final status shown on the main page.
+ * status = morning (or whole day), statusPm = afternoon, split = the two differ.
+ * Override row: status = morning/whole day, status_pm = afternoon if different (null = like the morning).
+ */
 export function resolveDay(personId, iso, plans, overrides) {
   const base = planned(personId, iso, plans);
   const ov = overrides.find((o) => o.member_id === personId && o.date === iso);
   if (ov) {
+    const am = ov.status || base.status;
+    const pm = ov.status_pm || (ov.status ? ov.status : base.statusPm);
     return {
-      status: ov.status || base.status,
+      status: am,
+      statusPm: pm,
+      split: am !== pm,
       note: ov.note ?? base.note,
       source: 'override',
-      overridden: Boolean(ov.status) && ov.status !== base.status,
+      overridden: am !== base.status || pm !== base.statusPm,
       base,
     };
   }
   return { ...base, overridden: false, base };
 }
+
+/** Is the person in the office in at least one half of the day? */
+export const inOffice = (info) => info.status === 'office' || info.statusPm === 'office';
+/** Office share of the day: 0, 0.5 or 1. */
+export const officeShare = (info) => (info.status === 'office' ? 0.5 : 0) + (info.statusPm === 'office' ? 0.5 : 0);

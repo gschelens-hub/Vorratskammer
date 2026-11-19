@@ -36,6 +36,7 @@ Störer-Bilder liegen im Supabase-Speicher `stoerer` (wie beim Abwesenheitsplane
 
 - **Zimmer**: Status pro Tag (grün = im Büro, gelb = mobil, rot = nicht da, grau = offen) und eine kurze Notiz als Sprechblase am Tisch. Eine Änderung hier gilt nur für diesen einen Tag; „Auf Planung zurücksetzen“ nimmt sie zurück.
 - **Planung**: Urlaub/Abwesenheit (von–bis), Einzeltermine und Turnus (wöchentlich bzw. alle n Wochen, oder der n-te/letzte Wochentag im Monat).
+- **Geteilte Tage**: im Status-Fenster „Nachmittags anders …“ bzw. in der Planung „nur vormittags/nachmittags“. Der Tisch ist dann quer geteilt (oben vormittags, unten nachmittags); am heutigen Tag wird der Vormittag ab 13 Uhr blass.
 - **Vorrang**: Tagesänderung › Urlaub/Einzeltermin › Turnus › Feiertag › offen.
 - **Pinnwand**, **Feiertage & Brückentage** (Berlin, plus 24.12./31.12.), **Wochenüberblick**, **Gastplatz** auf freien Tischen.
 - **Live**: Änderungen der anderen erscheinen sofort (Supabase Realtime).

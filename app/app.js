@@ -8,7 +8,10 @@ import {
   DESKS,
   formatShort,
   fromISO,
+  berlinHour,
   holidayName,
+  inOffice,
+  officeShare,
   isBridgeDay,
   isoWeek,
   mondayOf,
@@ -64,6 +67,18 @@ const dayInfo = (mid, iso) => resolveDay(mid, iso, state.data.plans, state.data.
 // status colour as style + data attribute (striped statuses get their pattern via CSS)
 const stAttr = (s) => `style="--c:${STATUSES[s].color}" data-s="${s}"`;
 const BASE_STATUSES = ['office', 'mobile', 'away'];
+/** Text for a day, e.g. "Mobil" or "vorm. Büro · nachm. Mobil". */
+const statusText = (info) => (info.split ? `vorm. ${STATUSES[info.status].label} · nachm. ${STATUSES[info.statusPm].label}` : STATUSES[info.status].label);
+/** Colour dot / overview cell for a day; split days are coloured top = morning, bottom = afternoon. */
+const dayMark = (cls, info, title = '') =>
+  info.split
+    ? `<i class="${cls} split" style="--c:${STATUSES[info.status].color};--c2:${STATUSES[info.statusPm].color}" data-s="${info.status}" data-s2="${info.statusPm}" title="${esc(title || statusText(info))}"></i>`
+    : `<i class="${cls}" ${stAttr(info.status)} title="${esc(title || statusText(info))}"></i>`;
+/** Desk background layer for one status (KreditNext keeps its stripes). */
+const deskLayer = (st) =>
+  st === 'kreditnext'
+    ? 'repeating-linear-gradient(135deg, color-mix(in srgb, #2fa84f 90%, transparent) 0 2.4cqw, color-mix(in srgb, #d64541 90%, transparent) 2.4cqw 4.8cqw)'
+    : `linear-gradient(color-mix(in srgb, ${STATUSES[st].color} 86%, transparent), color-mix(in srgb, ${STATUSES[st].color} 86%, transparent))`;
 function extraAllowed(mid) {
   const k = state.cfg?.kreditnext;
   if (!k || !k.on) return false;
@@ -201,8 +216,8 @@ function renderWeekbar() {
       const hol = holidayName(iso);
       const dots = people
         .map((p) => {
-          const s = dayInfo(p.id, iso).status;
-          return `<span class="cal-person" title="${esc(p.name)}: ${STATUSES[s].label}"><i class="dot" ${stAttr(s)}></i><b>${esc(initials[p.id])}</b></span>`;
+          const info = dayInfo(p.id, iso);
+          return `<span class="cal-person" title="${esc(p.name)}: ${esc(statusText(info))}">${dayMark('dot', info, `${p.name}: ${statusText(info)}`)}<b>${esc(initials[p.id])}</b></span>`;
         })
         .join('');
       const dog = dogsOn ? dogOn(iso) : null;
@@ -266,6 +281,7 @@ function renderRoom() {
     const info = dayInfo(owner.id, iso);
     const st = STATUSES[info.status];
     const note = info.note ? `<span class="desk-note">${esc(info.note)}</span>` : '';
+    const isMe = owner.id === me()?.id ? ' is-me' : '';
     const src =
       info.source === 'override'
         ? info.overridden
@@ -274,9 +290,21 @@ function renderRoom() {
         : info.source === 'plan' || info.source === 'turnus'
           ? `<span class="desk-src" title="Aus der Planung">${info.source === 'turnus' ? '↻' : '▤'}</span>`
           : '';
-    return `<button class="desk status-${info.status}${guest ? ' has-guest' : ''}${owner.id === me()?.id ? ' is-me' : ''}"
+    const aria = `${esc(owner.name)}: ${esc(info.split ? `vormittags ${STATUSES[info.status].label}, nachmittags ${STATUSES[info.statusPm].label}` : st.label)}${info.note ? ', ' + esc(info.note) : ''}${guest ? ', Gast ' + esc(guest.guest_name) : ''}`;
+    if (info.split) {
+      // split day: desk divided across, top = morning, bottom = afternoon; after 13:00 today the morning fades
+      const past = iso === state.today && berlinHour() >= 13 ? ' am-past' : '';
+      return `<button class="desk split${guest ? ' has-guest' : ''}${isMe}${past}"
+          style="${pos};background:${deskLayer(info.status)} top / 100% 50% no-repeat, ${deskLayer(info.statusPm)} bottom / 100% 50% no-repeat"
+          data-desk="${desk.id}" data-note-pos="${desk.notePos}" aria-label="${aria}">
+          <span class="split-row am"><span class="desk-name">${esc(owner.name)}</span><span class="half-label">vorm. ${STATUSES[info.status].label}</span>${src}</span>
+          <span class="split-row pm">${guestTag}<span class="half-label">nachm. ${STATUSES[info.statusPm].label}</span></span>
+          ${note}
+        </button>`;
+    }
+    return `<button class="desk status-${info.status}${guest ? ' has-guest' : ''}${isMe}"
         style="${pos};--c:${st.color}" data-desk="${desk.id}" data-note-pos="${desk.notePos}"
-        aria-label="${esc(owner.name)}: ${st.label}${info.note ? ', ' + esc(info.note) : ''}${guest ? ', Gast ' + esc(guest.guest_name) : ''}">
+        aria-label="${aria}">
         <span class="desk-head"><span class="desk-name">${esc(owner.name)}</span>${src}</span>
         <span class="desk-status">${guest && info.status !== 'office' ? '' : st.label}</span>
         ${guestTag}${note}
@@ -293,7 +321,7 @@ function renderRoom() {
       deskless
         .map((m) => {
           const info = dayInfo(m.id, iso);
-          return `<button class="chip" data-member="${m.id}" style="--c:${STATUSES[info.status].color}"><i class="dot" ${stAttr(info.status)}></i>${esc(m.name)}${info.note ? ` · ${esc(info.note)}` : ''}</button>`;
+          return `<button class="chip" data-member="${m.id}" style="--c:${STATUSES[info.status].color}">${dayMark('dot', info)}${esc(m.name)}${info.note ? ` · ${esc(info.note)}` : ''}</button>`;
         })
         .join('')
     : '';
@@ -416,9 +444,14 @@ function renderFurniture() {
 function renderOverview() {
   const days = weekDays();
   const people = state.data.members;
-  const statusOf = (mid, iso) => dayInfo(mid, iso).status;
   const deskPeople = people.filter((p) => p.desk);
-  const full = deskPeople.length ? days.filter((iso) => deskPeople.every((p) => statusOf(p.id, iso) === 'office')) : [];
+  // "komplett": everybody with a desk in the office at the same time (whole morning or whole afternoon)
+  const full = deskPeople.length
+    ? days.filter(
+        (iso) =>
+          deskPeople.every((p) => dayInfo(p.id, iso).status === 'office') || deskPeople.every((p) => dayInfo(p.id, iso).statusPm === 'office'),
+      )
+    : [];
   const kw = isoWeek(days[0]);
   let summary;
   if (full.length === 0) summary = `KW ${kw}: noch kein Tag, an dem alle im Büro sind.`;
@@ -440,7 +473,13 @@ function renderOverview() {
   }
 
   // nobody in the office (everyone mobile / away / KreditNext, nobody still open) -> a little ghost haunts that day
-  const empty = (iso) => people.length > 0 && people.every((p) => ['mobile', 'away', 'kreditnext'].includes(statusOf(p.id, iso)));
+  const gone = ['mobile', 'away', 'kreditnext'];
+  const empty = (iso) =>
+    people.length > 0 &&
+    people.every((p) => {
+      const info = dayInfo(p.id, iso);
+      return gone.includes(info.status) && gone.includes(info.statusPm);
+    });
   const anyGhost = days.some(empty);
   const head = days
     .map(
@@ -451,15 +490,16 @@ function renderOverview() {
     .map((p) => {
       const cells = days
         .map((iso) => {
-          const s = statusOf(p.id, iso);
-          return `<td><span class="cell" ${stAttr(s)} title="${STATUSES[s].label}"></span></td>`;
+          return `<td>${dayMark('cell', dayInfo(p.id, iso))}</td>`;
         })
         .join('');
-      const officeDays = days.filter((iso) => statusOf(p.id, iso) === 'office').length;
-      return `<tr><th scope="row">${esc(p.name)}</th>${cells}<td class="count">${officeDays}×</td></tr>`;
+      const officeDays = days.reduce((sum, iso) => sum + officeShare(dayInfo(p.id, iso)), 0);
+      const shown = Number.isInteger(officeDays) ? `${officeDays}` : `${Math.floor(officeDays) || ''}½`;
+      return `<tr><th scope="row">${esc(p.name)}</th>${cells}<td class="count">${shown}×</td></tr>`;
     })
     .join('');
-  const counts = days.map((iso) => `<td class="count">${people.filter((p) => statusOf(p.id, iso) === 'office').length}</td>`).join('');
+  const counts = days.map((iso) => `<td class="count">${people.filter((p) => inOffice(dayInfo(p.id, iso))).length}</td>`).join('');
+  const anySplit = days.some((iso) => people.some((p) => dayInfo(p.id, iso).split));
 
   $('#overview').innerHTML = `
     <h3>Wochenüberblick</h3>
@@ -472,15 +512,16 @@ function renderOverview() {
     <p class="legend">${Object.entries(STATUSES)
       .filter(([k]) => k !== 'kreditnext' || state.data.members.some((m) => extraAllowed(m.id)))
       .map(([k, s]) => `<span><i class="dot" ${stAttr(k)}></i>${esc(s.label)}</span>`)
-      .join('')}<span>✎ geändert</span><span>▤ geplant</span><span>↻ Turnus</span></p>`;
+      .join('')}${anySplit ? `<span><i class="dot split" style="--c:${STATUSES.office.color};--c2:${STATUSES.mobile.color}"></i>oben vorm., unten nachm.</span>` : ''}<span>✎ geändert</span><span>▤ geplant</span><span>↻ Turnus</span></p>`;
 }
 
 // ---------- planning view ----------
 const KIND_LABEL = { absence: 'Urlaub / Abwesenheit', single: 'Einzeltermin', recurring: 'Turnus' };
 const NTH_LABEL = { 1: '1.', 2: '2.', 3: '3.', 4: '4.', '-1': 'letzten' };
 
+const HALF_LABEL = { am: 'vormittags', pm: 'nachmittags' };
 function describePlan(p) {
-  const st = STATUSES[p.status].label;
+  const st = STATUSES[p.status].label + (p.half ? ` (${HALF_LABEL[p.half]})` : '');
   if (p.kind === 'absence') return `${formatShort(p.start_date)} – ${formatShort(p.end_date)}${p.end_date.slice(0, 4)} · ${st}`;
   if (p.kind === 'single') return `${WEEKDAYS_SHORT[weekday(p.start_date)]} ${formatShort(p.start_date)}${p.start_date.slice(0, 4)} · ${st}`;
   const rule =
@@ -527,6 +568,7 @@ function renderPlan() {
     </div>
     <div class="grid">
       <label>Status<select name="status" data-cur="${f.status}"></select></label>
+      <label>Tageszeit<select name="half">${opt('', f.half || '', 'ganzer Tag')}${opt('am', f.half || '', 'nur vormittags')}${opt('pm', f.half || '', 'nur nachmittags')}</select></label>
       <label><span class="lbl-start">Von</span><input type="date" name="start_date" value="${f.start_date}" required></label>
       <label class="k-absence">Bis<input type="date" name="end_date" value="${f.end_date || f.start_date}"></label>
       <label class="k-recurring">Wiederholung<select name="repeat">${opt('weekly', f.repeat, 'wöchentlich')}${opt('monthly_nth', f.repeat, 'monatlich (n-ter Wochentag)')}</select></label>
@@ -599,6 +641,7 @@ function readPlanForm() {
     kind,
     status: form.status.value,
     note: form.note.value.trim().slice(0, 60),
+    half: form.half.value || null,
     start_date: form.start_date.value,
     end_date: null,
     repeat: null,
@@ -686,42 +729,80 @@ function openPerson(mid, deskId = null) {
   const base = info.base;
   const baseText =
     base.source === 'plan' || base.source === 'turnus'
-      ? `Laut Planung: ${STATUSES[base.status].label}${base.note ? ` (${esc(base.note)})` : ''}`
+      ? `Laut Planung: ${esc(statusText(base))}${base.note ? ` (${esc(base.note)})` : ''}`
       : base.source === 'holiday'
         ? `Feiertag: ${esc(base.note)}`
         : 'Kein Planeintrag';
 
   // Changes are collected here and saved together: with "Speichern" or when the sheet is closed in any way.
-  const pending = { status: ov?.status ?? null, note: ov?.note ?? '' };
+  // am = morning or whole day, pm = afternoon (only used while the day is split)
+  const pending = { am: ov?.status ?? null, pm: ov?.status_pm ?? null, split: info.split, note: ov?.note ?? '' };
   let skipSave = false;
+  const shownAm = () => pending.am ?? info.status;
+  const shownPm = () => pending.pm ?? (pending.am && !info.split ? pending.am : info.statusPm);
+  const buttons = (row) =>
+    statusesFor(mid)
+      .map(
+        (s) => `<button type="button" role="radio" data-row="${row}" data-status="${s}" style="--c:${STATUSES[s].color}">
+          <i class="dot big" ${stAttr(s)}></i>${esc(STATUSES[s].label)}</button>`,
+      )
+      .join('');
 
   openSheet(
     `<header class="sheet-head">
       <h2>${esc(p.name)} <small>${desk ? `· Tisch ${esc(desk.label)}` : '· ohne festen Tisch'}</small></h2>
       <p>${WEEKDAYS_LONG[weekday(iso)]}, ${formatShort(iso)}${iso.slice(0, 4)}</p>
     </header>
-    <div class="status-pick" role="radiogroup" aria-label="Status">
-      ${statusesFor(mid)
-        .map(
-          (s) => `<button type="button" role="radio" aria-checked="${info.status === s}" data-status="${s}" style="--c:${STATUSES[s].color}">
-            <i class="dot big" ${stAttr(s)}></i>${esc(STATUSES[s].label)}</button>`,
-        )
-        .join('')}
+    <div class="day-halves">
+      <p class="half-head" data-am-head>Vormittag</p>
+      <div class="status-pick" role="radiogroup" aria-label="Status">${buttons('am')}</div>
+      <div class="pm-wrap" data-pm-wrap>
+        <p class="half-head">Nachmittag</p>
+        <div class="status-pick" role="radiogroup" aria-label="Status am Nachmittag">${buttons('pm')}</div>
+      </div>
+      <button type="button" class="link-btn" data-split-toggle></button>
     </div>
     <form class="note-only" data-note-form>
       <label>Notiz für diesen Tag<input name="note" maxlength="60" value="${esc(ov?.note ?? '')}" placeholder="${esc(base.note || 'z. B. ab 11 Uhr da')}" enterkeyhint="done"></label>
     </form>
     <p class="base-info">${baseText}${ov ? ' · <strong>für diesen Tag geändert</strong>' : ''}</p>
     ${ov ? '<button type="button" class="btn ghost small" data-reset>Auf Planung zurücksetzen</button>' : ''}
-    ${desk ? `<section class="guest-box guest-section"><h3>Gastplatz</h3>${guestSection(desk.id, iso, info.status === 'office', p.name)}</section>` : ''}
+    ${desk ? `<section class="guest-box guest-section"><h3>Gastplatz</h3>${guestSection(desk.id, iso, inOffice(info), p.name)}</section>` : ''}
     <div class="actions"><button type="button" class="btn primary wide-btn" data-save-person>Speichern</button></div>`,
     (root) => {
+      const sync = () => {
+        root.querySelectorAll('[data-row="am"]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.status === shownAm())));
+        root.querySelectorAll('[data-row="pm"]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.status === shownPm())));
+        root.querySelector('[data-pm-wrap]').hidden = !pending.split;
+        root.querySelector('[data-am-head]').hidden = !pending.split;
+        root.querySelector('[data-split-toggle]').textContent = pending.split ? 'Ganzer Tag gleich' : 'Nachmittags anders …';
+      };
       root.querySelectorAll('[data-status]').forEach((b) =>
         b.addEventListener('click', () => {
-          pending.status = b.dataset.status;
-          root.querySelectorAll('[data-status]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+          const s = b.dataset.status;
+          if (b.dataset.row === 'am') {
+            pending.am = s;
+            if (!pending.split) pending.pm = null;
+          } else if (s === shownAm()) {
+            // afternoon like the morning -> back to one status for the whole day
+            pending.split = false;
+            pending.pm = null;
+            if (!pending.am) pending.am = s;
+          } else {
+            pending.pm = s;
+          }
+          sync();
         }),
       );
+      root.querySelector('[data-split-toggle]').addEventListener('click', () => {
+        pending.split = !pending.split;
+        if (!pending.split) {
+          pending.pm = null;
+          if (!pending.am) pending.am = shownAm();
+        }
+        sync();
+      });
+      sync();
       const noteInput = root.querySelector('[data-note-form] input');
       noteInput.addEventListener('input', () => (pending.note = noteInput.value));
       root.querySelector('[data-note-form]').addEventListener('submit', (e) => {
@@ -739,13 +820,17 @@ function openPerson(mid, deskId = null) {
       state.onSheetClose = () => {
         if (skipSave) return;
         const note = pending.note.trim().slice(0, 60);
-        const changed = pending.status !== (ov?.status ?? null) || note !== (ov?.note ?? '').trim();
+        const am = pending.am;
+        // the afternoon is stored only while the day is split and something was chosen
+        let pm = pending.split && (pending.pm || pending.am) ? shownPm() : null;
+        if (pm && pm === (am ?? info.status)) pm = null;
+        const changed = am !== (ov?.status ?? null) || pm !== (ov?.status_pm ?? null) || note !== (ov?.note ?? '').trim();
         if (!changed) return;
-        if (!pending.status && !note) {
+        if (!am && !pm && !note) {
           if (ov) mutate(() => db.clearOverride(room(), mid, iso), 'Gespeichert');
           return;
         }
-        mutate(() => db.setOverride(room(), { member_id: mid, date: iso, status: pending.status, note: note || null }), 'Gespeichert');
+        mutate(() => db.setOverride(room(), { member_id: mid, date: iso, status: am, status_pm: pm, note: note || null }), 'Gespeichert');
       };
     },
   );
@@ -1470,7 +1555,8 @@ function describeLog(e, nameOf) {
       const who = nameOf(r.member_id);
       if (e.op === 'DELETE') return `${who}, ${fmtDay(o.date)}: auf Planung zurückgesetzt`;
       const parts = [];
-      if ((o.status || null) !== (n.status || null)) parts.push(`Status ${statusLabel(o.status)} → ${statusLabel(n.status)}`);
+      const amLabel = (r) => statusLabel(r.status) + (r.status_pm ? ` (nachm. ${statusLabel(r.status_pm)})` : '');
+      if ((o.status || null) !== (n.status || null) || (o.status_pm || null) !== (n.status_pm || null)) parts.push(`Status ${amLabel(o)} → ${amLabel(n)}`);
       if ((o.note || '') !== (n.note || '')) parts.push(n.note ? `Notiz „${n.note}“` : 'Notiz gelöscht');
       return `${who}, ${fmtDay(r.date)}: ${parts.join(', ') || 'geändert'}`;
     }

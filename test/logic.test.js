@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { holidayName, isBridgeDay, isoWeek, mondayOf, resolveDay, weekday } from '../app/logic.js';
+import { holidayName, inOffice, isBridgeDay, isoWeek, mondayOf, officeShare, resolveDay, weekday } from '../app/logic.js';
 
 test('dates', () => {
   assert.equal(weekday('2026-11-16'), 0);
@@ -53,4 +53,39 @@ test('holiday defaults to away', () => {
   const r = resolveDay('marc', '2026-12-25', [], []);
   assert.equal(r.status, 'away');
   assert.equal(r.source, 'holiday');
+});
+
+test('split day via override (morning office, afternoon mobile)', () => {
+  const ov = [{ member_id: 'marc', date: '2026-11-18', status: 'office', status_pm: 'mobile', note: null }];
+  const r = resolveDay('marc', '2026-11-18', [], ov);
+  assert.equal(r.status, 'office');
+  assert.equal(r.statusPm, 'mobile');
+  assert.equal(r.split, true);
+  assert.equal(inOffice(r), true);
+  assert.equal(officeShare(r), 0.5);
+});
+
+test('whole-day override covers both halves, even over a half-day plan', () => {
+  const plans2 = [{ id: 'h', member_id: 'luca', kind: 'recurring', status: 'mobile', start_date: '2026-11-02', repeat: 'weekly', weekday: 4, interval: 1, half: 'pm', created_at: '1' }];
+  assert.deepEqual([resolveDay('luca', '2026-11-20', plans2, []).status, resolveDay('luca', '2026-11-20', plans2, []).statusPm], ['unknown', 'mobile']);
+  const r = resolveDay('luca', '2026-11-20', plans2, [{ member_id: 'luca', date: '2026-11-20', status: 'office', status_pm: null }]);
+  assert.equal(r.status, 'office');
+  assert.equal(r.statusPm, 'office');
+  assert.equal(r.split, false);
+});
+
+test('afternoon-only override keeps the planned morning', () => {
+  const r = resolveDay('marc', '2026-12-02', plans, [{ member_id: 'marc', date: '2026-12-02', status: null, status_pm: 'office' }]);
+  assert.equal(r.status, 'away');
+  assert.equal(r.statusPm, 'office');
+});
+
+test('half-day plan beats whole-day plan of the same kind', () => {
+  const p = [
+    { id: 'a', member_id: 'julia', kind: 'absence', status: 'away', start_date: '2026-11-23', end_date: '2026-11-27', created_at: '2' },
+    { id: 'b', member_id: 'julia', kind: 'single', status: 'office', start_date: '2026-11-25', half: 'am', created_at: '1' },
+  ];
+  const r = resolveDay('julia', '2026-11-25', p, []);
+  assert.equal(r.status, 'office');
+  assert.equal(r.statusPm, 'away');
 });
