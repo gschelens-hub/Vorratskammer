@@ -1,7 +1,6 @@
 // 552 – Service Worker (gleiches Muster wie der Abwesenheitsplaner).
 // Bei jeder neuen Version CACHE hochzählen und version.txt anpassen.
-// Später: Push-Mitteilungen (Morgen-Erinnerung) kommen hier mit 'push'/'notificationclick' dazu.
-const CACHE = '552-v16';
+const CACHE = '552-v17';
 const ASSETS = [
   './index.html', './styles.css', './app.js', './data.js', './logic.js', './config.js', './dogs.js', './zitate.js',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png', './icon-180.png', './favicon-32.png', './manifest.json', './version.txt',
@@ -61,4 +60,52 @@ self.addEventListener('fetch', (e) => {
 });
 self.addEventListener('message', (e) => {
   if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
+// ---------- Push-Mitteilungen ----------
+const STATUS_LABEL = { office: 'Im Büro', mobile: 'Mobil', away: 'Nicht da' };
+self.addEventListener('push', (e) => {
+  let d = {};
+  try {
+    d = e.data ? e.data.json() : {};
+  } catch {
+    d = { body: e.data ? e.data.text() : '' };
+  }
+  const opts = {
+    body: d.body || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: d.tag || undefined,
+    data: d,
+  };
+  // answer buttons only for the morning reminder (shown on Android and desktop; iPhone opens the app instead)
+  if (d.actions) opts.actions = Object.entries(STATUS_LABEL).map(([action, title]) => ({ action, title }));
+  e.waitUntil(self.registration.showNotification(d.title || '552', opts));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const d = e.notification.data || {};
+  e.waitUntil(
+    (async () => {
+      if (STATUS_LABEL[e.action] && d.answer) {
+        const sub = await self.registration.pushManager.getSubscription();
+        if (sub) {
+          try {
+            await fetch(d.answer.replace(/\/$/, '') + '/answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: sub.endpoint, status: e.action }),
+            });
+            return;
+          } catch {
+            /* offline – open the app instead */
+          }
+        }
+      }
+      const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      if (wins.length) return wins[0].focus();
+      return self.clients.openWindow(d.url || './');
+    })(),
+  );
 });

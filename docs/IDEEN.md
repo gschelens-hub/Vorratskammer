@@ -1,9 +1,5 @@
 # 552 – Ideen für später
 
-## Zurückgestellt
-
-- **Morgen-Erinnerung (Push)** – werktags 8:30 „Bist du heute im Büro?“, Antwort direkt aus der Mitteilung. Der Service Worker ist dafür vorbereitet; auf dem iPhone nur, wenn die App auf dem Home-Bildschirm installiert ist. Braucht einmalig Schlüssel für die Mitteilungen und einen zeitgesteuerten Versand.
-
 ## Erledigt (v12, 18.11.2026)
 
 - Wochenkalender: Anfangsbuchstaben unter den Status-Punkten.
@@ -14,3 +10,7 @@
 ## Erledigt (v16, 19.11.2026)
 
 - Geteilte Tage: vormittags/nachmittags im Status-Fenster („Nachmittags anders …“) und in der Planung (Tageszeit), Tisch quer geteilt, nach 13 Uhr wird der Vormittag blass – braucht `supabase/update-v7.sql`.
+
+## Erledigt (v17, 22.11.2026)
+
+- Push-Mitteilungen: Morgen-Erinnerung (Uhrzeit einstellbar), neue Notiz, Hund im Körbchen, manuell aus dem Entwicklermenü; abschaltbar für alle und pro Gerät – Einrichtung in `docs/PUSH-EINRICHTUNG.md`.

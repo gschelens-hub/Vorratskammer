@@ -132,6 +132,15 @@ const live = {
   addNote: (room, note) => q(sb().from('z552_board').insert({ ...note, room_id: room })),
   deleteNote: (room, id) => q(sb().from('z552_board').delete().eq('id', id).eq('room_id', room)),
 
+  // push subscriptions (one row per device)
+  listPush: (room) => q(sb().from('z552_push').select('member_id,prefs,endpoint').eq('room_id', room)),
+  async getPush(endpoint) {
+    const rows = await q(sb().from('z552_push').select('*').eq('endpoint', endpoint).limit(1));
+    return rows[0] || null;
+  },
+  savePush: (room, row) => q(sb().from('z552_push').upsert({ ...row, room_id: room, updated_at: new Date().toISOString() }, { onConflict: 'endpoint' })),
+  setPushPrefs: (endpoint, prefs) => q(sb().from('z552_push').update({ prefs, updated_at: new Date().toISOString() }).eq('endpoint', endpoint)),
+  deletePush: (endpoint) => q(sb().from('z552_push').delete().eq('endpoint', endpoint)),
   async getLog(room, since) {
     const { data, error } = await sb()
       .from('z552_log')
@@ -325,6 +334,11 @@ const demo = {
       if (dog) d.dogs.push({ room_id: room, date, dog });
     }),
   getConfig: async (room) => demoDb().config?.[room] || null,
+  listPush: async (room) => (demoDb().push || []).filter((x) => x.room_id === room),
+  getPush: async (endpoint) => (demoDb().push || []).find((x) => x.endpoint === endpoint) || null,
+  savePush: async () => {},
+  setPushPrefs: async () => {},
+  deletePush: async () => {},
   getLog: async (room, since) =>
     (demoDb().log || [])
       .filter((e) => e.room_id === room && e.at >= since)

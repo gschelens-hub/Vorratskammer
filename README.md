@@ -42,7 +42,7 @@ Störer-Bilder liegen im Supabase-Speicher `stoerer` (wie beim Abwesenheitsplane
 - **Live**: Änderungen der anderen erscheinen sofort (Supabase Realtime).
 - **Demo ohne Datenbank**: `index.html?demo`.
 
-Später geplant: Morgen-Erinnerung per Push. Der Service Worker (`app/sw.js`) ist dafür schon vorhanden.
+- **Push-Mitteilungen**: Morgen-Erinnerung, neue Pinnwand-Notiz, Hund im Körbchen, manuelle Mitteilungen aus dem Entwicklermenü. Versand über eine kleine Push-Zentrale (Cloudflare Worker, `push-worker/`). Einrichtung: `docs/PUSH-EINRICHTUNG.md`.
 
 ## Entwicklung
 

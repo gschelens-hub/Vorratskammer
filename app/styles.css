@@ -2145,3 +2145,33 @@ main {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* push settings */
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.dev-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dev-inline select {
+  width: auto;
+  padding: 6px 8px;
+}
+.dev-send {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.dev-send h4 {
+  margin: 0;
+  font-size: 14px;
+}

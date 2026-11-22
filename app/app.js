@@ -379,7 +379,10 @@ function openBasket() {
           closeSheet();
           if (dog === current) return;
           const ok = await mutate(() => db.setDog(room(), iso, dog));
-          if (ok && dog) setTimeout(hearts, 350);
+          if (ok && dog) {
+            setTimeout(hearts, 350);
+            notifyPush('dog', { date: iso });
+          }
         }),
       );
     },
@@ -858,7 +861,7 @@ function openNoteEditor() {
         if (!title) return;
         const color = e.target.color.value;
         closeSheet();
-        mutate(() => db.addNote(room(), { title, text, color, author_id: me()?.id || null, author_name: me()?.name || '' }));
+        mutate(() => db.addNote(room(), { title, text, color, author_id: me()?.id || null, author_name: me()?.name || '' })).then((ok) => ok && notifyPush('note'));
       });
     },
   );
@@ -905,6 +908,7 @@ function openSettings() {
       <button type="button" class="btn" data-share>Raumcode teilen</button>
       <button type="button" class="btn ghost" data-switch>Ich bin jemand anderes</button>
     </div>
+    <section class="guest-box" id="push-box"></section>
     <section class="guest-box">
       <h3>Mitglieder</h3>
       <p class="muted small">Name und fester Tisch. Ein Tisch kann nur einer Person gehören.</p>
@@ -932,6 +936,7 @@ function openSettings() {
     </div>
     <p class="muted small version">Version ${esc(window.__VER || '–')}</p>`,
     (root) => {
+      renderPushBox(root.querySelector('#push-box'));
       root.querySelector('[data-close]').addEventListener('click', closeSheet);
       root.querySelector('[data-share]').addEventListener('click', shareRoom);
       root.querySelector('[data-switch]').addEventListener('click', () => {
@@ -1149,6 +1154,7 @@ const CFG_DEFAULT = {
   pin: '0552',
   kreditnext: { on: true, label: 'KreditNext', members: [] }, // members [] = everyone named Julia
   quotes: { offset: 0, hidden: [] }, // quote of the day: skipped steps and quotes hidden for good
+  push: { on: true, url: '', morning: true, morningTime: '08:30', notes: true, dogs: true },
   whatsapp: '', // invite link of the group chat, e.g. https://chat.whatsapp.com/AbC123
   theme: 'auto', // auto | light | dark
   features: { board: true, guests: true, overview: true, bridge: true, dogs: false, quotes: true },
@@ -1314,6 +1320,7 @@ function renderDev() {
     `<header class="sheet-head"><h2>Entwicklermenü</h2><p>Gilt für alle im Raum <strong>${esc(room())}</strong></p></header>
     <div class="dev">
       <section class="dev-sec" id="dev-quote">${devQuoteHtml()}</section>
+      <section class="dev-sec" id="dev-push">${devPushHtml(d)}</section>
       ${stoerer(
         'start',
         'Start-Störer',
@@ -1423,6 +1430,7 @@ function renderDev() {
       );
       root.querySelector('[data-log]').addEventListener('click', openLog);
       bindDevQuote(root);
+      bindDevPush(root);
       root.querySelector('[data-export]').addEventListener('click', () => {
         devCollect();
         const a = document.createElement('a');
@@ -1487,6 +1495,14 @@ function devCollect() {
   };
   DRAFT.pin = v('d_pin').value.trim() || '0552';
   DRAFT.whatsapp = v('d_whatsapp').value.trim();
+  DRAFT.push = {
+    on: v('d_push_on').checked,
+    url: pushBase(v('d_push_url').value),
+    morning: v('d_push_morning').checked,
+    morningTime: v('d_push_time').value,
+    notes: v('d_push_notes').checked,
+    dogs: v('d_push_dogs').checked,
+  };
   DRAFT.kreditnext = {
     on: v('d_kn_on').checked,
     label: v('d_kn_label').value.trim() || 'KreditNext',
@@ -1597,7 +1613,7 @@ function describeLog(e, nameOf) {
     case 'z552_roomconfig': {
       const a = o.config || {};
       const b = n.config || {};
-      const names = { start: 'Start-Störer', vac: 'Urlaubs-Störer', features: 'Funktionen', theme: 'Design', pin: 'PIN', whatsapp: 'WhatsApp-Link', kreditnext: 'Zusatz-Status', quotes: 'Zitat des Tages' };
+      const names = { start: 'Start-Störer', vac: 'Urlaubs-Störer', features: 'Funktionen', theme: 'Design', pin: 'PIN', whatsapp: 'WhatsApp-Link', kreditnext: 'Zusatz-Status', quotes: 'Zitat des Tages', push: 'Push-Mitteilungen' };
       const changed = Object.keys({ ...a, ...b })
         .filter((k) => names[k] && JSON.stringify(a[k]) !== JSON.stringify(b[k]))
         .map((k) => names[k]);
@@ -1678,6 +1694,181 @@ async function openLog() {
       draw(root);
     },
   );
+}
+
+// ---------- push notifications ----------
+const pushCfg = () => ({ on: true, url: '', morning: true, morningTime: '08:30', notes: true, dogs: true, ...(state.cfg?.push || {}) });
+const pushBase = (url) => String(url || '').trim().replace(/\/+$/, '');
+const PUSH_TIMES = ['07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
+
+/** Tells the push centre about a new note / dog, it then informs the others (fire and forget). */
+function notifyPush(kind, extra = {}) {
+  const c = pushCfg();
+  if (isDemo || !c.on || !c.url) return;
+  fetch(pushBase(c.url) + '/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ room: room(), kind, actor: me()?.id || null, ...extra }),
+  }).catch(() => {});
+}
+
+function urlB64ToUint8Array(base64) {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function currentPushSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 3000))]);
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+/** "Mitteilungen" section in the personal settings (per device). */
+async function renderPushBox(el) {
+  const c = pushCfg();
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const head = '<h3>Mitteilungen auf diesem Gerät</h3>';
+  const say = (html) => (el.innerHTML = head + html);
+  if (isDemo) return say('<p class="muted small">Im Demo-Modus nicht verfügbar.</p>');
+  if (!c.url) return say('<p class="muted small">Noch nicht eingerichtet – die Adresse der Push-Zentrale fehlt im Entwicklermenü.</p>');
+  if (!c.on) return say('<p class="muted small">Mitteilungen sind im Entwicklermenü für alle ausgeschaltet.</p>');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return say(
+      isIOS && !standalone
+        ? '<p class="warn">Auf dem iPhone zuerst über „Teilen → Zum Home-Bildschirm“ installieren und 552 dann von dort öffnen.</p>'
+        : '<p class="warn">Dieser Browser kann keine Mitteilungen empfangen.</p>',
+    );
+  }
+  if (Notification.permission === 'denied') {
+    return say('<p class="warn">Mitteilungen sind für 552 blockiert. Bitte in den Einstellungen des Handys bzw. Browsers erlauben.</p>');
+  }
+  say('<p class="muted small">Wird geprüft …</p>');
+  let sub = null;
+  let row = null;
+  try {
+    sub = await currentPushSub();
+    row = sub ? await db.getPush(sub.endpoint) : null;
+  } catch (err) {
+    return say(`<p class="warn">${esc(err.message || 'Nicht erreichbar')}</p>`);
+  }
+  if (!sub || !row) {
+    say('<p class="muted small">Morgen-Erinnerung, neue Pinnwand-Notizen und Hunde im Körbchen als Mitteilung aufs Handy.</p><button type="button" class="btn primary" data-push-on>Mitteilungen einschalten</button>');
+    el.querySelector('[data-push-on]').addEventListener('click', () => enablePush(el));
+    return;
+  }
+  if (row.member_id !== me()?.id) db.savePush(room(), { ...row, member_id: me().id }).catch(() => {}); // person switched on this device
+  const prefs = { morning: true, notes: true, dogs: true, ...(row.prefs || {}) };
+  const opt = (key, on, label) => (on ? check(`p_${key}`, prefs[key] !== false, label).replace('<input ', `<input data-pref="${key}" `) : '');
+  say(`<div class="stack-tight">
+      ${opt('morning', c.morning, `Morgen-Erinnerung (Mo–Fr ${c.morningTime} Uhr, nur wenn noch nichts eingetragen ist)`)}
+      ${opt('notes', c.notes, 'Neue Notiz an der Pinnwand')}
+      ${opt('dogs', c.dogs, 'Hund im Körbchen eingetragen')}
+    </div>
+    <div class="actions left"><button type="button" class="btn small" data-push-test>Test senden</button><button type="button" class="btn small ghost danger" data-push-off>Ausschalten</button></div>`);
+  el.querySelectorAll('[data-pref]').forEach((cb) =>
+    cb.addEventListener('change', async () => {
+      prefs[cb.dataset.pref] = cb.checked;
+      try {
+        await db.setPushPrefs(sub.endpoint, prefs);
+        toast('Gespeichert');
+      } catch (err) {
+        toast('Nicht gespeichert: ' + err.message);
+      }
+    }),
+  );
+  el.querySelector('[data-push-test]').addEventListener('click', async () => {
+    try {
+      const r = await fetch(pushBase(c.url) + '/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }).then((x) => x.json());
+      toast(r.sent ? 'Test gesendet – kommt gleich an' : `Senden fehlgeschlagen${r.error ? ': ' + r.error : ''}`);
+    } catch {
+      toast('Push-Zentrale nicht erreichbar');
+    }
+  });
+  el.querySelector('[data-push-off]').addEventListener('click', async () => {
+    await db.deletePush(sub.endpoint).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+    toast('Mitteilungen ausgeschaltet');
+    renderPushBox(el);
+  });
+}
+
+async function enablePush(el) {
+  const c = pushCfg();
+  try {
+    if (!me()) return;
+    const { publicKey } = await fetch(pushBase(c.url) + '/').then((r) => r.json());
+    if (!publicKey) return toast('Die Push-Zentrale hat noch keinen Schlüssel.');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return toast('Mitteilungen wurden nicht erlaubt.');
+    const reg = await navigator.serviceWorker.ready;
+    const old = await reg.pushManager.getSubscription();
+    if (old) await old.unsubscribe().catch(() => {});
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(publicKey) });
+    const j = sub.toJSON();
+    await db.savePush(room(), { endpoint: j.endpoint, member_id: me().id, p256dh: j.keys.p256dh, auth: j.keys.auth, prefs: { morning: true, notes: true, dogs: true } });
+    toast('Mitteilungen sind an');
+  } catch (err) {
+    toast('Einschalten fehlgeschlagen: ' + (err.message || err));
+  }
+  renderPushBox(el);
+}
+
+// developer menu: push section
+function devPushHtml(d) {
+  const p = { ...pushCfg(), ...(d.push || {}) };
+  const time = `<select id="d_push_time">${PUSH_TIMES.map((t) => `<option${t === p.morningTime ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+  return `<h3>Push-Mitteilungen</h3>
+    ${check('d_push_on', p.on, 'Push-Mitteilungen aktiv (für alle)')}
+    <label>Adresse der Push-Zentrale<input id="d_push_url" value="${esc(p.url)}" placeholder="https://552-push.….workers.dev" inputmode="url" autocomplete="off"></label>
+    <div class="dev-inline">${check('d_push_morning', p.morning, 'Morgen-Erinnerung um')}${time}<span class="muted small">Uhr (Mo–Fr)</span></div>
+    ${check('d_push_notes', p.notes, 'Bei neuer Pinnwand-Notiz')}
+    ${check('d_push_dogs', p.dogs, 'Wenn ein Hund eingetragen wird')}
+    <p class="muted small" data-push-devices>Angemeldete Geräte werden geladen …</p>
+    <div class="dev-send">
+      <h4>Mitteilung senden</h4>
+      <input id="d_send_title" maxlength="60" placeholder="Überschrift (optional, sonst „552“)">
+      <textarea id="d_send_body" maxlength="200" rows="2" placeholder="Text, z. B. Kuchen in der Küche! 🍰"></textarea>
+      <div class="dev-inline">
+        <select id="d_send_to"><option value="">an alle</option>${state.data.members.map((m) => `<option value="${m.id}">an ${esc(m.name)}</option>`).join('')}</select>
+        <button type="button" class="btn small primary" data-push-send>Jetzt senden</button>
+      </div>
+    </div>`;
+}
+function bindDevPush(root) {
+  const devEl = root.querySelector('[data-push-devices]');
+  db.listPush(room())
+    .then((rows) => {
+      const by = {};
+      for (const r of rows) by[r.member_id] = (by[r.member_id] || 0) + 1;
+      const list = Object.entries(by).map(([id, n]) => `${member(id)?.name || '?'}${n > 1 ? ` (${n})` : ''}`);
+      devEl.textContent = list.length ? `Angemeldet: ${list.join(', ')}` : 'Noch kein Gerät angemeldet (jede Person: Einstellungen → Mitteilungen einschalten).';
+    })
+    .catch(() => (devEl.textContent = 'Push-Tabelle fehlt – bitte update-v8.sql in Supabase ausführen.'));
+  root.querySelector('[data-push-send]').addEventListener('click', async (e) => {
+    const url = pushBase(document.getElementById('d_push_url').value) || pushBase(pushCfg().url);
+    const body = document.getElementById('d_send_body').value.trim();
+    if (!url) return toast('Zuerst die Adresse der Push-Zentrale eintragen.');
+    if (!body) return toast('Bitte einen Text eingeben.');
+    e.target.disabled = true;
+    try {
+      const r = await fetch(url + '/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room: room(), pin: state.cfg.pin, title: document.getElementById('d_send_title').value.trim(), body, to: document.getElementById('d_send_to').value || null }),
+      }).then((x) => x.json());
+      if (r.error) toast('Nicht gesendet: ' + r.error);
+      else {
+        toast(r.sent ? `Gesendet an ${r.sent} ${r.sent === 1 ? 'Gerät' : 'Geräte'}` : 'Kein angemeldetes Gerät erreicht');
+        document.getElementById('d_send_body').value = '';
+      }
+    } catch {
+      toast('Push-Zentrale nicht erreichbar');
+    } finally {
+      e.target.disabled = false;
+    }
+  });
 }
 
 // ---------- Störer ----------
