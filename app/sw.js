@@ -1,6 +1,6 @@
 // 552 – Service Worker (gleiches Muster wie der Abwesenheitsplaner).
 // Bei jeder neuen Version CACHE hochzählen und version.txt anpassen.
-const CACHE = '552-v17';
+const CACHE = '552-v18';
 const ASSETS = [
   './index.html', './styles.css', './app.js', './data.js', './logic.js', './config.js', './dogs.js', './zitate.js',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png', './icon-180.png', './favicon-32.png', './manifest.json', './version.txt',

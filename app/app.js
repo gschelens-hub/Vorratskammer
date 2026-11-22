@@ -97,9 +97,10 @@ async function load() {
     const d = await db.load(room(), state.weekStart, addDays(state.weekStart, 6));
     if (seq !== loadSeq) return;
     state.data = d;
-    state.today = todayBerlin();
     $('#dbbanner').hidden = true;
     if (!me()) return showSetup('who');
+    // a new day began while the app was open (e.g. Friday -> Saturday): jump to the right week
+    if (todayBerlin() !== state.today) return goToday();
     render();
   } catch (err) {
     console.error(err);
