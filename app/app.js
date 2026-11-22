@@ -131,11 +131,13 @@ function render() {
   document.body.dataset.view = state.view;
   $('#tab-room').setAttribute('aria-selected', state.view === 'room');
   $('#tab-plan').setAttribute('aria-selected', state.view === 'plan');
-  $('#me-chip').textContent = me()?.name || '…';
+  $('#me-chip').innerHTML = `<svg class="gear" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg><span>${esc(me()?.name || '…')}</span>`;
+  $('#me-chip').setAttribute('aria-label', `Einstellungen (${me()?.name || ''})`);
   $('#room-chip').textContent = room() || '';
   $('#demo-flag').hidden = !isDemo;
   if (state.view === 'room') {
     renderQuote();
+    renderPushHint();
     renderWeekbar();
     renderRoom();
     renderBoard();
@@ -487,7 +489,7 @@ function renderOverview() {
   const anyGhost = days.some(empty);
   const head = days
     .map(
-      (iso, i) => `<th scope="col">${empty(iso) ? `<span class="ghost" style="--d:${(-i * 1.3).toFixed(2)}s;--rows:${people.length}" title="Keiner im Büro – hier spukt's">${GHOST_SVG}</span>` : ''}<button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`,
+      (iso, i) => `<th scope="col">${empty(iso) ? `<span class="spook" style="--d:${(-i * 1.3).toFixed(2)}s;--rows:${people.length}" title="Keiner im Büro – hier spukt's">${GHOST_SVG}</span>` : ''}<button data-pick="${iso}" class="${iso === state.selected ? 'sel' : ''}">${WEEKDAYS_SHORT[weekday(iso)]}</button></th>`,
     )
     .join('');
   const rows = people
@@ -938,6 +940,7 @@ function openSettings() {
     <p class="muted small version">Version ${esc(window.__VER || '–')}</p>`,
     (root) => {
       renderPushBox(root.querySelector('#push-box'));
+      state.onSheetClose = () => renderPushHint(true);
       root.querySelector('[data-close]').addEventListener('click', closeSheet);
       root.querySelector('[data-share]').addEventListener('click', shareRoom);
       root.querySelector('[data-switch]').addEventListener('click', () => {
@@ -1756,7 +1759,7 @@ async function renderPushBox(el) {
   }
   if (!sub || !row) {
     say('<p class="muted small">Morgen-Erinnerung, neue Pinnwand-Notizen und Hunde im Körbchen als Mitteilung aufs Handy.</p><button type="button" class="btn primary" data-push-on>Mitteilungen einschalten</button>');
-    el.querySelector('[data-push-on]').addEventListener('click', () => enablePush(el));
+    el.querySelector('[data-push-on]').addEventListener('click', () => enablePush(() => renderPushBox(el)));
     return;
   }
   if (row.member_id !== me()?.id) db.savePush(room(), { ...row, member_id: me().id }).catch(() => {}); // person switched on this device
@@ -1795,7 +1798,7 @@ async function renderPushBox(el) {
   });
 }
 
-async function enablePush(el) {
+async function enablePush(done) {
   const c = pushCfg();
   try {
     if (!me()) return;
@@ -1813,7 +1816,43 @@ async function enablePush(el) {
   } catch (err) {
     toast('Einschalten fehlgeschlagen: ' + (err.message || err));
   }
-  renderPushBox(el);
+  done?.();
+}
+
+/** Small hint on the main page until notifications are switched on (can be postponed for 14 days). */
+let pushHintChecked = false;
+async function renderPushHint(force = false) {
+  const el = $('#push-hint');
+  if (pushHintChecked && !force) return;
+  pushHintChecked = true;
+  el.hidden = true;
+  const c = pushCfg();
+  const later = Number(LS.get('552.pushHintLater', '0'));
+  if (isDemo || !c.on || !c.url || !me() || Date.now() < later) return;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  let html;
+  if (!supported) {
+    if (!(isIOS && !standalone)) return;
+    html = '<p>🔔 Für Mitteilungen 552 über <strong>Teilen → Zum Home-Bildschirm</strong> installieren und von dort öffnen.</p>';
+  } else {
+    if (Notification.permission === 'denied') return;
+    try {
+      const sub = await currentPushSub();
+      if (sub && (await db.getPush(sub.endpoint))) return; // already on
+    } catch {
+      return;
+    }
+    html = '<p>🔔 <strong>Mitteilungen einschalten?</strong> Morgen-Erinnerung, neue Notizen und Hunde im Körbchen aufs Handy.</p><button type="button" class="btn small primary" data-hint-on>Einschalten</button>';
+  }
+  el.innerHTML = html + '<button type="button" class="btn small ghost" data-hint-later>Später</button>';
+  el.hidden = false;
+  el.querySelector('[data-hint-on]')?.addEventListener('click', () => enablePush(() => renderPushHint(true)));
+  el.querySelector('[data-hint-later]').addEventListener('click', () => {
+    LS.set('552.pushHintLater', String(Date.now() + 14 * 86400000));
+    el.hidden = true;
+  });
 }
 
 // developer menu: push section

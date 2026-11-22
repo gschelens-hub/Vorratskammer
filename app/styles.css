@@ -1432,7 +1432,7 @@ main {
   }
   .me-chip {
     padding: 6px 10px;
-    max-width: 96px;
+    max-width: 124px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1984,7 +1984,7 @@ main {
   position: relative;
   z-index: 2;
 }
-.ghost {
+.spook {
   --travel: calc(var(--rows, 3) * 24px + 6px);
   position: absolute;
   left: 50%;
@@ -1997,10 +1997,10 @@ main {
   animation: ghost-haunt 7s ease-in-out infinite, ghost-sway 2.6s ease-in-out infinite;
   animation-delay: var(--d, 0s);
 }
-.ghost svg {
+.spook svg {
   overflow: visible;
 }
-.ghost .ghost-eye {
+.spook .ghost-eye {
   transform-box: fill-box;
   transform-origin: center;
   animation: blink 4s infinite;
@@ -2052,8 +2052,8 @@ main {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ghost,
-  .ghost .ghost-eye {
+  .spook,
+  .spook .ghost-eye {
     animation: none;
   }
 }
@@ -2174,4 +2174,41 @@ main {
 .dev-send h4 {
   margin: 0;
   font-size: 14px;
+}
+
+/* settings chip with gear */
+.me-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.me-chip .gear {
+  flex: none;
+  opacity: 0.75;
+}
+.me-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* hint on the main page: switch on notifications */
+.push-hint {
+  max-width: 720px;
+  margin: 0 auto 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.push-hint p {
+  margin: 0;
+  flex: 1 1 220px;
+  font-size: 14px;
+}
+.push-hint .actions {
+  margin: 0;
 }
