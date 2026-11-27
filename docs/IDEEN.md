@@ -33,3 +33,7 @@
 ## Erledigt (v17, 22.11.2026)
 
 - Push-Mitteilungen: Morgen-Erinnerung (Uhrzeit einstellbar), neue Notiz, Hund im Körbchen, manuell aus dem Entwicklermenü; abschaltbar für alle und pro Gerät – Einrichtung in `docs/PUSH-EINRICHTUNG.md`.
+
+## Erledigt (v20, 27.11.2026)
+
+- Status „Schulung“ für alle: Tisch wird zur klassischen Schultafel (Holzrahmen, Kreide, Schwamm) – braucht `supabase/update-v9.sql`.

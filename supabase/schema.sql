@@ -259,3 +259,14 @@ create index if not exists z552_push_room on z552_push(room_id);
 alter table z552_push enable row level security;
 drop policy if exists "anon_all" on z552_push;
 create policy "anon_all" on z552_push for all to anon, authenticated using (true) with check (true);
+
+-- ===== Status Schulung (Update v9) =====
+alter table z552_overrides drop constraint if exists z552_overrides_status_check;
+alter table z552_overrides add constraint z552_overrides_status_check
+  check (status in ('office', 'mobile', 'away', 'kreditnext', 'training'));
+alter table z552_overrides drop constraint if exists z552_overrides_status_pm_check;
+alter table z552_overrides add constraint z552_overrides_status_pm_check
+  check (status_pm in ('office', 'mobile', 'away', 'kreditnext', 'training'));
+alter table z552_plans drop constraint if exists z552_plans_status_check;
+alter table z552_plans add constraint z552_plans_status_check
+  check (status in ('office', 'mobile', 'away', 'kreditnext', 'training'));

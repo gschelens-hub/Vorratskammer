@@ -134,6 +134,8 @@ export const STATUSES = {
   unknown: { label: 'Offen', color: '#8a8f98' },
   // extra status, only for selected members (default: Julia); desk is striped green/red
   kreditnext: { label: 'KreditNext', color: '#2fa84f', striped: true },
+  // training: the desk turns into a school chalkboard
+  training: { label: 'Schulung', color: '#2f5a44' },
 };
 
 // Floor plan of the furniture, in the pixel units of the original drawing (design/buero-552.png).

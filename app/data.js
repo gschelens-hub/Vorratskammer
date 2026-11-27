@@ -60,6 +60,8 @@ async function q(promise) {
   const { data, error } = await promise;
   if (error) {
     console.error(error);
+    // before update-v9.sql the database does not know the status "Schulung" yet
+    if (/status(_pm)?_check/.test(error.message || '')) throw new DbError('„Schulung“ geht erst nach dem Supabase-Update v9 (update-v9.sql).');
     throw new DbError(error.message || 'Datenbankfehler');
   }
   return data;

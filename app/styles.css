@@ -2212,3 +2212,52 @@ main {
 .push-hint .actions {
   margin: 0;
 }
+
+/* ---------- status "Schulung": the desk becomes a classic school chalkboard ---------- */
+.desk.status-training {
+  background: radial-gradient(ellipse at 30% 35%, rgba(255, 255, 255, 0.07), transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(255, 255, 255, 0.05), transparent 50%), #2f5a44;
+  box-shadow: inset 0 0 0 1.3cqw #8b5a2b, inset 0 0 0 1.6cqw #6e4520, inset 0 0 2.5cqw rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.93);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.15);
+  padding: 2cqw 3cqw 3cqw;
+}
+.desk.status-training.is-me {
+  box-shadow: inset 0 0 0 1.3cqw #8b5a2b, inset 0 0 0 1.6cqw #6e4520, inset 0 0 2.5cqw rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+.desk.status-training .desk-status {
+  font-style: italic;
+}
+/* chalk ledge with a piece of chalk and a sponge */
+.desk.status-training::before {
+  content: '';
+  position: absolute;
+  left: 1.3cqw;
+  right: 1.3cqw;
+  bottom: 1.3cqw;
+  height: 1.1cqw;
+  background: linear-gradient(#f4f1e8, #f4f1e8) right 5cqw top -0.4cqw / 3.2cqw 0.8cqw no-repeat,
+    linear-gradient(#3b6fd8 55%, #d9c9a8 55%) right 9.5cqw top -0.6cqw / 4.2cqw 1.3cqw no-repeat, #6e4520;
+  pointer-events: none;
+}
+/* a bit of chalk scribble */
+.desk.status-training::after {
+  content: '2 + 2 = 4 ✓';
+  position: absolute;
+  right: 3.4cqw;
+  top: 2.4cqw;
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(9px, 1.8cqw, 15px);
+  opacity: 0.72;
+  pointer-events: none;
+}
+.desk.status-training .desk-src {
+  display: none;
+}
+/* dots and overview cells: board green with a wooden rim */
+.dot[data-s='training'],
+.cell[data-s='training'] {
+  background: #2f5a44;
+  box-shadow: inset 0 0 0 1.5px #8b5a2b;
+}

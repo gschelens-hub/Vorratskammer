@@ -66,7 +66,7 @@ const weekDays = () => [0, 1, 2, 3, 4].map((i) => addDays(state.weekStart, i));
 const dayInfo = (mid, iso) => resolveDay(mid, iso, state.data.plans, state.data.overrides);
 // status colour as style + data attribute (striped statuses get their pattern via CSS)
 const stAttr = (s) => `style="--c:${STATUSES[s].color}" data-s="${s}"`;
-const BASE_STATUSES = ['office', 'mobile', 'away'];
+const BASE_STATUSES = ['office', 'mobile', 'away', 'training'];
 /** Text for a day, e.g. "Mobil" or "vorm. Büro · nachm. Mobil". */
 const statusText = (info) => (info.split ? `vorm. ${STATUSES[info.status].label} · nachm. ${STATUSES[info.statusPm].label}` : STATUSES[info.status].label);
 /** Colour dot / overview cell for a day; split days are coloured top = morning, bottom = afternoon. */
@@ -78,7 +78,9 @@ const dayMark = (cls, info, title = '') =>
 const deskLayer = (st) =>
   st === 'kreditnext'
     ? 'repeating-linear-gradient(135deg, color-mix(in srgb, #2fa84f 90%, transparent) 0 2.4cqw, color-mix(in srgb, #d64541 90%, transparent) 2.4cqw 4.8cqw)'
-    : `linear-gradient(color-mix(in srgb, ${STATUSES[st].color} 86%, transparent), color-mix(in srgb, ${STATUSES[st].color} 86%, transparent))`;
+    : st === 'training'
+      ? 'radial-gradient(ellipse at 30% 35%, rgba(255,255,255,.07), transparent 55%), linear-gradient(#2f5a44, #2f5a44)'
+      : `linear-gradient(color-mix(in srgb, ${STATUSES[st].color} 86%, transparent), color-mix(in srgb, ${STATUSES[st].color} 86%, transparent))`;
 function extraAllowed(mid) {
   const k = state.cfg?.kreditnext;
   if (!k || !k.on) return false;
@@ -479,7 +481,7 @@ function renderOverview() {
   }
 
   // nobody in the office (everyone mobile / away / KreditNext, nobody still open) -> a little ghost haunts that day
-  const gone = ['mobile', 'away', 'kreditnext'];
+  const gone = ['mobile', 'away', 'kreditnext', 'training'];
   const empty = (iso) =>
     people.length > 0 &&
     people.every((p) => {
@@ -627,7 +629,7 @@ function syncPlanForm() {
   const sel = form.status;
   const cur = sel.value || sel.dataset.cur || 'away';
   const mid = form.member.value;
-  const list = ['away', 'mobile', 'office', ...(extraAllowed(mid) ? ['kreditnext'] : [])];
+  const list = ['away', 'mobile', 'office', 'training', ...(extraAllowed(mid) ? ['kreditnext'] : [])];
   sel.innerHTML = list.map((s) => `<option value="${s}"${s === cur ? ' selected' : ''}>${esc(STATUSES[s].label)}</option>`).join('');
   const kind = form.kind.value;
   const repeat = form.repeat.value;
